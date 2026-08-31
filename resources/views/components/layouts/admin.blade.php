@@ -1,0 +1,149 @@
+{{-- App shell autenticado (Emerald Archive): sidebar fixa no desktop, drawer no
+     mobile. As classes são as do design system — inventar nome novo custou uma
+     página que rolava na horizontal na primeira tentativa.
+
+     ⚠ Todo link usa route(), nunca caminho absoluto: em produção o app roda
+     numa SUBPASTA (ipccg.org.br/eventos) e "/painel" perderia o prefixo. --}}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ $title ?? config('app.name') }}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('assets/app.css') }}?v={{ filemtime(public_path('assets/app.css')) }}">
+
+    @livewireStyles
+</head>
+<body>
+    @php($church = \App\Models\Church::find(session('church_id')))
+    @php($evento = \App\Models\Event::atual())
+
+    <div class="mobile-topbar">
+        <button class="hamburger" id="sidebar-toggle" aria-label="Abrir menu">
+            <i class="bi bi-list"></i>
+        </button>
+        <div style="flex:1;min-width:0">
+            <div class="mobile-topbar-title">IPCCG</div>
+            <div class="mobile-topbar-sub">{{ $evento?->nome ?? 'Eventos' }}</div>
+        </div>
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <button type="submit" class="topbar-logout" aria-label="Sair">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </form>
+    </div>
+
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <div class="admin-layout">
+        <aside class="sidebar" id="sidebar">
+            <a class="sidebar-brand" href="{{ route('painel') }}">
+                <div>
+                    <div class="sidebar-brand-title">IPCCG</div>
+                    <div class="sidebar-brand-sub">{{ $church?->name ?? 'Eventos' }}</div>
+                </div>
+            </a>
+
+            @if ($evento)
+                <div class="sidebar-context">
+                    <span class="sidebar-context-label">Evento ativo</span>
+                    <strong>{{ $evento->nome }}</strong>
+                </div>
+            @endif
+
+            <nav class="sidebar-nav">
+                <a href="{{ route('painel') }}"
+                   class="nav-item {{ request()->routeIs('painel') ? 'active' : '' }}">
+                    <i class="bi bi-speedometer2 nav-icon"></i><span>Painel</span>
+                </a>
+
+                @can('livraria.vender')
+                    <a href="{{ route('livraria.venda') }}"
+                       class="nav-item {{ request()->routeIs('livraria.venda') ? 'active' : '' }}">
+                        <i class="bi bi-bag-check nav-icon"></i><span>Venda</span>
+                    </a>
+                @endcan
+
+                @can('ver-livraria')
+                    <a href="{{ route('livraria.estoque') }}"
+                       class="nav-item {{ request()->routeIs('livraria.estoque') ? 'active' : '' }}">
+                        <i class="bi bi-box-seam nav-icon"></i><span>Estoque</span>
+                    </a>
+                @endcan
+
+                @can('livraria.remessa')
+                    <a href="{{ route('livraria.remessa') }}"
+                       class="nav-item {{ request()->routeIs('livraria.remessa') ? 'active' : '' }}">
+                        <i class="bi bi-truck nav-icon"></i><span>Remessa</span>
+                    </a>
+                @endcan
+
+                @can('livraria.catalogo')
+                    <a href="{{ route('livraria.catalogo') }}"
+                       class="nav-item {{ request()->routeIs('livraria.catalogo') ? 'active' : '' }}">
+                        <i class="bi bi-journals nav-icon"></i><span>Catálogo</span>
+                    </a>
+
+                    <a href="{{ route('livraria.categorias') }}"
+                       class="nav-item {{ request()->routeIs('livraria.categorias') ? 'active' : '' }}">
+                        <i class="bi bi-tags nav-icon"></i><span>Categorias</span>
+                    </a>
+
+                    <a href="{{ route('livraria.fornecedores') }}"
+                       class="nav-item {{ request()->routeIs('livraria.fornecedores') ? 'active' : '' }}">
+                        <i class="bi bi-shop nav-icon"></i><span>Fornecedores</span>
+                    </a>
+                @endcan
+
+                @can('eventos.ver')
+                    <a href="{{ route('eventos') }}"
+                       class="nav-item {{ request()->routeIs('eventos') ? 'active' : '' }}">
+                        <i class="bi bi-calendar3 nav-icon"></i><span>Eventos</span>
+                    </a>
+                @endcan
+            </nav>
+
+            <div class="sidebar-footer">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="sidebar-logout">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <main class="content-area">
+            {{ $slot }}
+        </main>
+    </div>
+
+    <x-toasts />
+
+    @livewireScripts
+    <script src="{{ asset('assets/ui.js') }}"></script>
+    <script>
+        // Drawer no mobile: o overlay e o hambúrguer só alternam uma classe.
+        (function () {
+            const btn = document.getElementById('sidebar-toggle');
+            const bar = document.getElementById('sidebar');
+            const ovl = document.getElementById('sidebar-overlay');
+            if (!btn || !bar || !ovl) return;
+            const fechar = () => { bar.classList.remove('open'); ovl.classList.remove('open'); };
+            btn.addEventListener('click', () => {
+                bar.classList.toggle('open');
+                ovl.classList.toggle('open');
+            });
+            ovl.addEventListener('click', fechar);
+            document.addEventListener('keydown', e => e.key === 'Escape' && fechar());
+        })();
+    </script>
+</body>
+</html>

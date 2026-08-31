@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+
+/*
+ | ⚠ Sempre route()/asset(), nunca caminho absoluto fixo: em produção o app
+ | roda numa SUBPASTA (ipccg.org.br/eventos) e "/painel" perderia o prefixo.
+ */
+
+Route::get('/', fn () => redirect()->route('login'));
+
+Route::livewire('/login', 'auth.login')->name('login');
+
+Route::post('/logout', function () {
+    Auth::logout();
+    session()->invalidate();
+    session()->regenerateToken();
+
+    return redirect()->route('login');
+})->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::livewire('/painel', 'painel')->name('painel');
+
+    Route::livewire('/eventos', 'eventos')
+        ->name('eventos')->middleware('can:eventos.ver');
+
+    // ── Módulo Livraria ──
+    Route::livewire('/livraria/venda', 'livraria.venda')
+        ->name('livraria.venda')->middleware('can:livraria.vender');
+
+    Route::livewire('/livraria/estoque', 'livraria.estoque')
+        ->name('livraria.estoque')->middleware('can:ver-livraria');
+
+    // Cadastros
+    Route::livewire('/livraria/fornecedores', 'livraria.fornecedores')
+        ->name('livraria.fornecedores')->middleware('can:livraria.catalogo');
+
+    Route::livewire('/livraria/catalogo', 'livraria.catalogo')
+        ->name('livraria.catalogo')->middleware('can:livraria.catalogo');
+
+    Route::livewire('/livraria/categorias', 'livraria.categorias')
+        ->name('livraria.categorias')->middleware('can:livraria.catalogo');
+
+    Route::livewire('/livraria/remessa', 'livraria.remessa')
+        ->name('livraria.remessa')->middleware('can:livraria.remessa');
+});

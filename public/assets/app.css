@@ -1,0 +1,1925 @@
+/* ── Emerald Archive — Design System ──────────────────── */
+:root {
+  --bg:          #F7F7F6;
+  --surface:     #FFFFFF;
+  --fg:          #062F3B;
+  --muted:       #EBECE9;
+  --muted-fg:    #5A7161;
+  --border:      #D9DBD6;
+
+  --primary:     #334C3B;
+  --primary-fg:  #F7F7F6;
+  --primary-dim: rgba(51,76,59,.09);
+
+  --accent:      #BD7522;
+  --accent-fg:   #FFFFFF;
+  --accent-dim:  rgba(189,117,34,.10);
+  --accent-hover:#A2641D;
+
+  --sidebar-bg:  #062F3B;
+  --sidebar-fg:  #E6E7E3;
+  --sidebar-hover:#163A44;
+  --sidebar-w:   260px;
+
+  --ok:          #667F6E;
+  --ok-dim:      rgba(102,127,110,.12);
+  --warn:        #BD7522;
+  --warn-dim:    rgba(189,117,34,.12);
+  --danger:      #DC2828;
+  --danger-dim:  rgba(220,40,40,.10);
+
+  --radius:      10px;
+  --radius-sm:   6px;
+  --radius-lg:   14px;
+  --shadow-card: 0 1px 2px rgba(6,47,59,.05), 0 1px 3px rgba(6,47,59,.04);
+  --shadow-hover:0 6px 16px rgba(6,47,59,.09);
+}
+
+*, *::before, *::after { box-sizing: border-box }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: .95rem;
+  line-height: 1.6;
+}
+
+/* ── Admin Layout ──────────────────────────────────────── */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ───────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  height: 100dvh;               /* dvh = altura visível real; sem isso, no tablet o
+                                   rodapé ("Sair") vaza atrás da barra do navegador */
+  z-index: 100;
+  overflow: hidden;              /* marca e rodapé fixos; só o .sidebar-nav rola */
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 18px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  text-decoration: none;
+}
+
+.sidebar-brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .03em;
+}
+
+.sidebar-brand-sub {
+  font-size: 11px;
+  color: rgba(230,231,227,.55);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;                 /* permite o filho flex rolar em vez de estourar */
+  overflow-y: auto;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-section {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(230,231,227,.35);
+  padding: 12px 12px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: rgba(230,231,227,.75);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background .13s, color .13s;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  background: var(--sidebar-hover);
+  color: #fff;
+}
+
+.nav-item.active {
+  background: var(--primary);
+  color: #fff;
+  border-left-color: var(--accent);
+}
+
+.nav-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: .85;
+  line-height: 1;
+}
+
+.nav-badge {
+  margin-left: auto;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.sidebar-footer {
+  padding: 12px 10px 18px;
+  border-top: 1px solid rgba(255,255,255,.07);
+}
+
+.sidebar-logout {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(220,40,40,.3);
+  background: rgba(220,40,40,.08);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background .13s;
+  font-family: inherit;
+}
+
+.sidebar-logout:hover {
+  background: rgba(220,40,40,.18);
+}
+
+/* ── Content area ──────────────────────────────────────── */
+.content-area {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-width: 0;          /* deixa o conteúdo largo (ex.: matriz) rolar dentro em vez de estourar a página */
+  padding: 32px 36px;
+  min-height: 100vh;
+}
+
+/* ── Page header ───────────────────────────────────────── */
+.page-header {
+  margin-bottom: 28px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-header-left {}
+
+.page-title {
+  margin: 0 0 3px;
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-size: .875rem;
+  color: var(--muted-fg);
+}
+
+/* ── Cards ─────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-title {
+  margin: 0;
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.box {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--muted);
+  margin-top: 12px;
+}
+
+.box.accent {
+  border-color: rgba(189,117,34,.3);
+  background: var(--accent-dim);
+}
+
+.box.ok {
+  border-color: rgba(102,127,110,.3);
+  background: var(--ok-dim);
+}
+
+.section {
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Typography ────────────────────────────────────────── */
+h1, h2, h3 {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+h1 { margin: 0 0 12px; font-size: 1.5rem;  font-weight: 700 }
+h2 { margin: 0 0 10px; font-size: 1.125rem; font-weight: 700 }
+h3 {
+  margin: 0 0 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--muted-fg);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.big   { font-size: 1rem; font-weight: 700; color: var(--fg) }
+.muted { color: var(--muted-fg); font-size: .875rem }
+.small { font-size: .8rem }
+
+/* ── Forms ─────────────────────────────────────────────── */
+.form { display: flex; flex-direction: column; gap: 14px }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap }
+.form-row > * { flex: 1; min-width: 140px }
+
+label {
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--muted-fg);
+  display: block;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: .9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .13s, box-shadow .13s;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(51,76,59,.12);
+}
+
+input[type="file"] {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: .85rem;
+  color: var(--muted-fg);
+  box-shadow: none;
+}
+
+input[type="checkbox"] { width: auto }
+
+/* ── Buttons ───────────────────────────────────────────── */
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .13s, box-shadow .13s, transform .1s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+/* primary — forest green */
+button, .btn-primary {
+  background: var(--primary);
+  color: var(--primary-fg);
+  border-color: var(--primary);
+}
+button:hover, .btn-primary:hover {
+  background: #2a3e30;
+  border-color: #2a3e30;
+}
+
+/* secondary */
+button.secondary, .btn-secondary {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--border);
+}
+button.secondary:hover, .btn-secondary:hover {
+  background: var(--muted);
+}
+
+/* accent — bronze */
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.btn-accent:hover { background: var(--accent-hover); border-color: var(--accent-hover) }
+
+/* ghost — outline primary */
+.btn-ghost {
+  background: transparent;
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.btn-ghost:hover { background: var(--primary-dim) }
+
+/* danger */
+.btn-danger {
+  background: var(--danger-dim);
+  color: var(--danger);
+  border-color: rgba(220,40,40,.25);
+}
+.btn-danger:hover { background: rgba(220,40,40,.18) }
+
+.btn-sm {
+  padding: 5px 12px;
+  font-size: .8rem;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Lists ─────────────────────────────────────────────── */
+.list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px }
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.itemRow {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: box-shadow .15s;
+}
+
+.itemRow:hover { box-shadow: var(--shadow-hover) }
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── Table ─────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin-top: 4px }
+
+table { width: 100%; border-collapse: collapse; font-size: .9rem }
+
+th {
+  text-align: left;
+  padding: 9px 14px;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  border-bottom: 2px solid var(--border);
+}
+
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--fg);
+}
+
+tr:last-child td { border-bottom: none }
+tr:hover td { background: var(--muted) }
+
+/* ── Matriz de competências ────────────────────────────── */
+/* Largura natural (não estica): com muitas funções, rola dentro do .table-wrap. */
+.matrix-table { width: auto; min-width: 100% }
+/* Cabeçalho do ministério: rótulo do grupo com sublinhado que cobre suas colunas. */
+.matrix-table th.cmp-min-head {
+  text-align: center;
+  color: var(--primary);
+  border-bottom: 2px solid var(--primary);
+}
+/* Divisória entre ministérios: linha à direita + respiro. */
+.matrix-table th.cmp-sep,
+.matrix-table td.cmp-sep { border-right: 2px solid var(--border); padding-right: 22px }
+/* Respiro no início do próximo grupo. */
+.matrix-table th.cmp-gap,
+.matrix-table td.cmp-gap { padding-left: 22px }
+
+/* Competências no celular: lista expansível em vez da matriz 2D (rolar lateral é ruim no toque). */
+.cmp-mobile { display: none; }
+@media (max-width: 768px) {
+  .cmp-desktop { display: none; }
+  .cmp-mobile { display: block; }
+}
+.cmp-acc { border-bottom: 1px solid var(--border); }
+.cmp-acc-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 14px 10px; background: none; border: none; cursor: pointer;
+  font-size: 1rem; font-weight: 500; color: var(--fg); text-align: left;
+  border-radius: var(--radius-sm); transition: background-color .15s ease;
+}
+/* expandido: fundo bem leve + chevron girado (sem cor forte no texto) */
+.cmp-acc-head.is-open { background: var(--primary-dim); }
+.cmp-acc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-acc-head .bi { color: var(--muted-fg); transition: transform .2s ease; flex-shrink: 0; }
+.cmp-acc-head .bi.is-open { transform: rotate(180deg); }
+.cmp-acc-body { padding: 2px 2px 14px; }
+.cmp-acc-min { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--primary); margin: 12px 0 4px; }
+.cmp-acc-role { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--radius-sm); font-size: .95rem; cursor: pointer; }
+.cmp-acc-role input { width: 20px; height: 20px; flex-shrink: 0; }
+.cmp-acc-role:active { background: var(--muted); }
+.cmp-acc-role.is-locked { opacity: .5; }
+
+/* Barra de rolagem CLÁSSICA (não some como overlay) — usável com o mouse no tablet.
+   Estilizar ::-webkit-scrollbar já desliga o comportamento overlay no WebKit. */
+.table-wrap { scrollbar-width: thin; scrollbar-color: var(--muted-fg) var(--muted) }
+.table-wrap::-webkit-scrollbar { height: 14px }
+.table-wrap::-webkit-scrollbar-track { background: var(--muted); border-radius: 8px }
+.table-wrap::-webkit-scrollbar-thumb {
+  background: var(--muted-fg);
+  border-radius: 8px;
+  border: 3px solid var(--muted);   /* margem cria um "polegar" flutuante, mais fácil de agarrar */
+}
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--primary) }
+
+/* Barra de rolagem PRÓPRIA (Alpine) — o overlay do Android some no mouse, então
+   desenhamos a nossa: sempre visível quando há transbordo e arrastável. */
+.hscroll-vp { overflow-x: auto; margin-top: 4px; scrollbar-width: none }
+.hscroll-vp::-webkit-scrollbar { display: none }   /* esconde a nativa; usamos a custom */
+.hscroll-bar {
+  position: relative; height: 14px; margin-top: 8px; border-radius: 8px;
+  background: var(--muted); cursor: pointer; touch-action: none; user-select: none;
+}
+.hscroll-thumb {
+  position: absolute; top: 2px; bottom: 2px; left: 0; min-width: 48px;
+  background: var(--muted-fg); border-radius: 6px; transition: background .15s;
+}
+.hscroll-bar:hover .hscroll-thumb,
+.hscroll-thumb.is-dragging { background: var(--primary) }
+
+/* ── Pills ─────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--muted-fg);
+}
+
+.pill.open   { background: var(--ok-dim);   border-color: rgba(102,127,110,.3); color: var(--ok) }
+.pill.closed { background: var(--muted);    color: var(--muted-fg) }
+.pill.draft  { background: var(--warn-dim); border-color: rgba(189,117,34,.3);  color: var(--warn) }
+
+/* ── Links ─────────────────────────────────────────────── */
+.link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: .875rem;
+  font-weight: 500;
+}
+.link:hover { text-decoration: underline }
+
+/* ── Stats grid ────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-card);
+  transition: transform .2s, box-shadow .2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.stat-label {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted-fg);
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--fg);
+  line-height: 1;
+}
+
+.stat-value.accent { color: var(--accent) }
+.stat-value.ok     { color: var(--ok) }
+
+/* ── Avatar ────────────────────────────────────────────── */
+.avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--muted-fg);
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* ── Empty state ───────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted-fg);
+  font-size: .875rem;
+}
+
+/* ── Alert ─────────────────────────────────────────────── */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  font-weight: 500;
+  margin-bottom: 20px;
+  border: 1px solid;
+  border-left-width: 5px;
+  box-shadow: var(--shadow-card);
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  line-height: 0;
+}
+.alert-icon svg {
+  width: 24px;
+  height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  display: block;
+}
+
+.alert-content { flex: 1; min-width: 0 }
+
+.alert-title {
+  font-weight: 800;
+  font-size: 1.08rem;
+  letter-spacing: .01em;
+  margin-bottom: 2px;
+}
+
+.alert-message { font-weight: 500 }
+
+/* Tons com contraste reforçado (WCAG AA) sobre os fundos claros */
+.alert.ok     { background: var(--ok-dim);     border-color: rgba(102,127,110,.5); color: #234433 }
+.alert.warn   { background: var(--warn-dim);   border-color: rgba(189,117,34,.5);  color: #6e440f }
+.alert.danger { background: var(--danger-dim); border-color: rgba(220,40,40,.45);  color: #8c1818 }
+.alert.info   { background: rgba(45,125,160,.10); border-color: rgba(45,125,160,.45); color: #1f5c77 }
+
+/* ── Divider ───────────────────────────────────────────── */
+.divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ── Wrap (login, cédula, páginas sem sidebar) ─────────── */
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px }
+
+.wrap .card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Auth pages (login, registro) ─────────────────────── */
+.auth-page {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hover);
+  overflow: hidden;
+}
+
+.auth-header {
+  background: var(--sidebar-bg);
+  padding: 28px 32px 24px;
+  text-align: center;
+}
+
+.auth-brand-title {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px;
+}
+
+.auth-brand-sub {
+  font-size: .8rem;
+  color: rgba(230,231,227,.55);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.auth-body {
+  padding: 28px 32px 32px;
+}
+
+.auth-title {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0 0 6px;
+}
+
+.auth-subtitle {
+  font-size: .875rem;
+  color: var(--muted-fg);
+  margin: 0 0 22px;
+}
+
+.auth-links {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.auth-links .link {
+  font-size: .85rem;
+}
+
+/* ── Ballot (cédula) ───────────────────────────────────── */
+.ballot-page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 24px 16px;
+}
+
+.ballot-wrap {
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+.ballot-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.ballot-election-title {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--fg);
+  margin: 0 0 6px;
+}
+
+.ballot-scrutiny-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(189,117,34,.3);
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Vote option cards (SIM/NÃO/BRANCO) */
+.vote-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.vote-option {
+  cursor: pointer;
+  text-align: center;
+  padding: 18px 10px;
+  border-radius: var(--radius);
+  border: 2px solid var(--border);
+  background: var(--surface);
+  display: block;
+  transition: border-color .15s, background .15s, transform .1s;
+  user-select: none;
+}
+
+.vote-option:hover {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.vote-option input[type="radio"] { display: none }
+
+.vote-option .vote-label {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.vote-option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.vote-option:has(input:checked) .vote-label {
+  color: var(--primary);
+}
+
+/* Candidate card on ballot */
+.candidate-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--muted);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.candidate-photo {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.candidate-photo-placeholder {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .75rem;
+  color: var(--muted-fg);
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+
+.candidate-name {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.candidate-role {
+  font-size: .875rem;
+  color: var(--muted-fg);
+  margin-top: 2px;
+}
+
+/* ── Busca e ordenação de tabelas ──────────────────────── */
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.table-search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+  padding: 8px 12px 8px 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 16 16' fill='none' stroke='%235A7161' stroke-width='1.6'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='M11 11l3.5 3.5'/%3E%3C/svg%3E") no-repeat 11px center;
+  font-size: .9rem;
+  font-family: inherit;
+  color: var(--fg);
+  outline: none;
+  transition: border-color .13s, box-shadow .13s;
+}
+
+.table-search:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(51,76,59,.12);
+}
+
+.table-search-count {
+  font-size: .8rem;
+  color: var(--muted-fg);
+}
+
+.th-sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.th-sortable:hover { color: var(--primary) }
+
+.th-arrow {
+  display: inline-block;
+  width: 0; height: 0;
+  margin-left: 5px;
+  vertical-align: middle;
+  opacity: .35;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid currentColor;
+}
+
+.sorted-asc .th-arrow {
+  opacity: 1;
+  border-bottom: 5px solid var(--accent);
+  border-top: 0;
+}
+
+.sorted-desc .th-arrow {
+  opacity: 1;
+  border-top: 5px solid var(--accent);
+  border-bottom: 0;
+}
+
+/* ── Loading / feedback ────────────────────────────────── */
+/* Barra de progresso fina no topo — feedback imediato ao navegar/enviar */
+.route-progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  width: 0;
+  z-index: 9999;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(189,117,34,.6);
+  opacity: 0;
+  transition: width .2s ease, opacity .3s ease;
+  pointer-events: none;
+}
+
+.route-progress.active {
+  opacity: 1;
+  transition: width 8s cubic-bezier(.1,.7,.3,1), opacity .15s ease;
+}
+
+.route-progress.done {
+  width: 100% !important;
+  opacity: 0;
+  transition: width .2s ease, opacity .4s ease .1s;
+}
+
+/* Botão ocupado — mostra que a ação está em curso e bloqueia novo clique */
+button.is-busy, .btn.is-busy {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+  opacity: .85;
+}
+
+button.is-busy::after, .btn.is-busy::after {
+  content: "";
+  position: absolute;
+  width: 15px; height: 15px;
+  top: 50%; left: 50%;
+  margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin .6s linear infinite;
+}
+
+button.secondary.is-busy::after, .btn-ghost.is-busy::after, .btn-danger.is-busy::after {
+  border-color: rgba(51,76,59,.25);
+  border-top-color: var(--primary);
+}
+
+@keyframes btn-spin { to { transform: rotate(360deg) } }
+
+/* ── Mobile navigation ─────────────────────────────────── */
+.mobile-topbar {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--sidebar-bg);
+  z-index: 300;
+  align-items: center;
+  padding: 0 16px;
+  gap: 14px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.25);
+}
+
+.mobile-topbar-title {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: .95rem;
+  font-weight: 700;
+  color: #fff;
+  flex: 1;
+}
+
+.mobile-topbar-sub {
+  font-size: .7rem;
+  color: rgba(230,231,227,.5);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  color: rgba(230,231,227,.85);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background .13s, color .13s;
+}
+
+.hamburger:hover { background: rgba(255,255,255,.1); color: #fff }
+
+/* Logout no topbar mobile (o <button> anula o fundo verde global). */
+.topbar-logout {
+  background: none;
+  border: none;
+  color: rgba(230,231,227,.85);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background .13s, color .13s;
+}
+.topbar-logout:hover { background: rgba(220,40,40,.18); color: #f87171 }
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 200;
+  cursor: pointer;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .mobile-topbar { display: flex }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    z-index: 250;
+    padding-top: 56px; /* libera espaço para a topbar mobile fixa */
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,.3);
+  }
+
+  /* a topbar mobile já exibe a marca — o brand interno fica redundante */
+  .sidebar .sidebar-brand { display: none }
+
+  .sidebar-overlay.open { display: block }
+
+  .content-area {
+    margin-left: 0;
+    padding: 72px 16px 32px;
+  }
+
+  .page-header {
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+  }
+
+  .page-title { font-size: 1.15rem }
+
+  .card { padding: 14px }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  th, td { padding: 10px }
+
+  .auth-body { padding: 22px 20px 28px }
+  .auth-header { padding: 22px 20px 20px }
+
+  .vote-options { gap: 7px }
+  .vote-option { padding: 16px 8px }
+  .vote-option .vote-label { font-size: .9rem }
+
+  /* Busca de tabela ocupa a largura toda; 16px evita auto-zoom no iOS */
+  .table-search { max-width: none; width: 100%; font-size: 16px }
+  .table-toolbar { gap: 8px }
+}
+
+/* ── Erro de campo em formulários (Fase 3) ──────────────── */
+.field-error {
+  display: block;
+  margin-top: 4px;
+  color: #8c1818;              /* danger escurecido — contraste AA */
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+/* ── Slot de escala em aberto (Fase 4c) ─────────────────── */
+.pill.vaga {
+  background: var(--warn-dim);
+  color: #6e440f;                      /* contraste AA */
+  border: 1px solid rgba(189,117,34,.5);
+  animation: vagaBlink 1.4s ease-in-out infinite;
+}
+@keyframes vagaBlink { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+@media (prefers-reduced-motion: reduce) { .pill.vaga { animation: none } }
+
+.slot-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 10px; margin: 4px 6px 0 0;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); font-size: .85rem;
+}
+.slot-chip-info, .slot-chip-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Celular: chip ocupa a linha toda e empilha (info em cima, ações embaixo) — nunca estoura. */
+@media (max-width: 768px) {
+  .slot-chip { display: flex; flex-direction: column; align-items: stretch; width: 100%; margin: 0 0 8px 0; }
+  .slot-chip-actions { justify-content: flex-end; }
+}
+
+/* ── Modal (Fase 4d) ────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(6,47,59,.45);
+}
+.modal-card {
+  width: 100%; max-width: 440px; max-height: 85vh; overflow: auto;
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hover);
+}
+.modal-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 16px 18px; border-bottom: 1px solid var(--border);
+}
+.modal-body { padding: 16px 18px; }
+.modal-list-item {
+  width: 100%; margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: flex-start; gap: 8px;
+  text-align: left; white-space: normal;   /* nome longo QUEBRA (não estoura nem some) */
+}
+.modal-list-item > .bi { flex-shrink: 0; }
+.modal-list-name { min-width: 0; overflow-wrap: anywhere; }
+
+/* ── Central de Ajuda (Fase 14) ─────────────────────────── */
+.help-intro {
+  background: var(--primary-dim);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.help-chain {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin-top: 10px; font-size: .85rem;
+}
+.help-chain .step {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 10px; font-weight: 600; white-space: nowrap;
+}
+.help-chain .arrow { color: var(--muted-fg); font-weight: 700; }
+
+.help-item {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); margin-bottom: 10px; overflow: hidden;
+}
+.help-item > summary {
+  cursor: pointer; padding: 14px 16px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px; list-style: none;
+}
+.help-item > summary::-webkit-details-marker { display: none; }
+.help-item > summary::before {
+  content: "›"; font-size: 1.2rem; color: var(--muted-fg);
+  transition: transform .15s ease; line-height: 1;
+}
+.help-item[open] > summary { background: var(--muted); border-bottom: 1px solid var(--border); }
+.help-item[open] > summary::before { transform: rotate(90deg); }
+.help-body { padding: 14px 16px; }
+.help-body p { margin: 0 0 10px; }
+.help-body ul { margin: 0 0 10px; padding-left: 20px; }
+.help-body li { margin-bottom: 5px; }
+.help-body .tip {
+  background: var(--accent-dim); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: .9rem; margin-top: 6px;
+}
+
+/* Sub-acordeão dentro de um help-item (informações avançadas). */
+.help-sub {
+  margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--muted); overflow: hidden;
+}
+.help-sub > summary {
+  cursor: pointer; padding: 10px 12px; font-weight: 600; color: var(--primary);
+  display: flex; align-items: center; gap: 8px; list-style: none; font-size: .92rem;
+}
+.help-sub > summary::-webkit-details-marker { display: none; }
+.help-sub > summary::before {
+  content: "›"; font-size: 1.1rem; color: var(--muted-fg);
+  transition: transform .15s ease; line-height: 1;
+}
+.help-sub[open] > summary::before { transform: rotate(90deg); }
+.help-sub-body { padding: 4px 14px 12px; font-size: .9rem; }
+.help-sub-body ul { margin: 0 0 10px; padding-left: 20px; }
+.help-sub-body li { margin-bottom: 4px; }
+.help-body code, .help-sub-body code {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px; font-size: .85em;
+}
+
+/* ── Sidebar: grupos em cascata por contexto ────────────── */
+.nav-group { margin-top: 8px; }
+.nav-group > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px;
+  color: var(--sidebar-fg); opacity: .6;
+  font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+}
+.nav-group > summary::-webkit-details-marker { display: none; }
+.nav-group > summary::after {
+  content: "›"; margin-left: auto; font-size: 1.15rem; line-height: 1;
+  transition: transform .15s ease;
+}
+.nav-group[open] > summary::after { transform: rotate(90deg); }
+.nav-group > summary:hover { opacity: 1; }
+.nav-group .nav-item { padding-left: 30px; }   /* recuo dos filhos (hierarquia) */
+
+/* ── Alinhamento: controles na mesma linha ──────────────── */
+.form-row { align-items: flex-end; }
+
+/* ── Dropdown customizado <x-select> (Fase 15) ──────────── */
+.cselect { position: relative; }
+.cselect-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 12px; font-size: .95rem; text-align: left;
+  background: var(--surface); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+/* hover leve: o .cselect-trigger é um <button>, então precisa anular o fundo
+   escuro herdado da regra global button:hover (senão escurece todo). */
+.cselect-trigger:hover { border-color: var(--muted-fg); background: var(--muted); }
+.cselect-trigger:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+.cselect-trigger .bi { color: var(--muted-fg); font-size: .8rem; transition: transform .2s ease; flex-shrink: 0; }
+.cselect-trigger .bi.is-open { transform: rotate(180deg); }
+/* corta nomes longos com reticências (min-width:0 libera o encolhimento no flex) */
+.cselect-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cselect-placeholder { color: var(--muted-fg); }
+
+.cselect-panel {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 50;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-hover);
+  overflow: hidden;
+}
+.cselect-search {
+  width: 100%; border: none; border-bottom: 1px solid var(--border);
+  padding: 10px 12px; font-size: 16px; /* 16px evita zoom no iOS */ border-radius: 0;
+}
+.cselect-search:focus { outline: none; }
+.cselect-list { list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto; }
+.cselect-option { padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background-color .15s ease; }
+.cselect-option:hover { background: var(--muted); }
+.cselect-option.is-selected { background: var(--primary-dim); font-weight: 600; }
+.cselect-option.is-selected:hover { background: var(--primary-dim); }
+.cselect-empty { padding: 12px; color: var(--muted-fg); font-size: .875rem; }
+
+/* ── Datepicker (calendário do app) ─────────────────────── */
+.dpick { position: relative; }
+.dpick-panel { padding: 10px; min-width: 264px; width: max-content; max-width: 320px; }
+.dpick-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.dpick-title { font-weight: 600; color: var(--fg); font-size: .9rem; }
+.dpick-nav { background: none; border: none; padding: 4px 8px; cursor: pointer; color: var(--muted-fg); border-radius: var(--radius-sm); }
+.dpick-nav:hover { background: var(--muted); color: var(--fg); }
+.dpick-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px; }
+.dpick-dows span { text-align: center; font-size: .68rem; font-weight: 700; color: var(--muted-fg); }
+.dpick-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dpick-day {
+  aspect-ratio: 1; border: none; background: none; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: .85rem; color: var(--fg); padding: 0;
+}
+.dpick-day:hover:not(:disabled):not(.is-empty) { background: var(--muted); }
+.dpick-day.is-empty { visibility: hidden; cursor: default; }
+.dpick-day:disabled { color: var(--muted-fg); opacity: .35; cursor: not-allowed; }
+.dpick-day.is-today { outline: 1px solid var(--border); }
+.dpick-day.is-selected, .dpick-day.is-selected:hover { background: var(--primary); color: #fff; }
+.dpick-time { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); color: var(--muted-fg); }
+.dpick-time select { padding: 5px 8px; font-size: 16px; flex: 1; }
+.dpick-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+
+/* ── Calendário de escalas (aba em Minhas escalas) ──────── */
+[x-cloak] { display: none !important; }
+
+.esc-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.esc-cal-title { font-weight: 700; color: var(--fg); font-size: 1rem; }
+.esc-cal-dows { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 6px; }
+.esc-cal-dows span { text-align: center; font-size: .72rem; font-weight: 700; color: var(--muted-fg); }
+.esc-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.esc-cal-day {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 1px solid transparent; border-radius: var(--radius-sm);
+  background: none; color: var(--fg); font-size: .95rem; font-weight: 600;
+  cursor: default; transition: background .12s, color .12s;
+}
+.esc-cal-day.is-empty { visibility: hidden; }
+.esc-cal-day:not(:disabled) { cursor: pointer; }
+/* tem função da minha competência (aberta ou preenchida): fundo suave */
+.esc-cal-day.is-competencia { background: var(--primary-dim); color: var(--primary); }
+.esc-cal-day.is-competencia:hover { background: var(--muted); }
+/* escalado: destaque forte (sólido) — vence quando o dia tem os dois */
+.esc-cal-day.is-escalado { background: var(--primary); color: #fff; border-color: var(--primary); }
+.esc-cal-day.is-escalado:hover { background: var(--primary-hover, var(--primary)); }
+/* dia de hoje */
+.esc-cal-day.is-today { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* dia tocado (selecionado) */
+.esc-cal-day.is-selected { box-shadow: 0 0 0 2px var(--fg); }
+/* pontinho no canto: sinaliza "além de escalado, ainda há vaga aberta aqui" */
+.esc-cal-flag {
+  position: absolute; top: 4px; right: 4px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+.esc-cal-legend {
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: .78rem; color: var(--muted-fg);
+}
+.esc-cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.esc-cal-swatch { width: 16px; height: 16px; border-radius: 4px; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; font-size: .6rem; line-height: 1; }
+.esc-cal-swatch.is-escalado { background: var(--primary); }
+.esc-cal-swatch.is-competencia { background: var(--primary-dim); box-shadow: inset 0 0 0 1px var(--primary); }
+.esc-cal-swatch.is-dot { background: #fff; box-shadow: inset 0 0 0 1px var(--border); position: relative; }
+.esc-cal-swatch.is-dot::after {
+  content: ''; position: absolute; top: 1px; right: 1px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 1.5px var(--primary);
+}
+
+.esc-cal-detail { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.esc-cal-detail-title { font-size: .95rem; font-weight: 700; color: var(--fg); margin: 0 0 10px; }
+.esc-cal-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.esc-cal-item-head strong { overflow-wrap: anywhere; }
+.esc-cal-hint { margin-top: 14px; text-align: center; font-size: .82rem; }
+
+/* Equipe do evento (só-leitura) no detalhe do dia */
+.esc-cal-event { margin-bottom: 10px; border-left: 3px solid var(--primary); }
+.esc-cal-team { list-style: none; margin: 8px 0 0; padding: 0; }
+.esc-cal-team-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 6px 0; border-top: 1px solid var(--border); font-size: .88rem;
+}
+.esc-cal-team-row:first-child { border-top: none; }
+.esc-cal-team-role { color: var(--fg); overflow-wrap: anywhere; }
+.esc-cal-team-who { text-align: right; white-space: nowrap; flex: 0 0 auto; }
+.esc-cal-team-row.is-mine { background: var(--primary-dim); border-radius: var(--radius-sm); padding: 6px 8px; border-top-color: transparent; }
+.esc-cal-team-row.is-open .esc-cal-team-role { color: var(--muted-fg); }
+
+/* ── Calendário do operador (radar de gaps) ─────────────── */
+/* cabe em ~1 tela: largura capada, rola só quando abre o detalhe */
+.esc-cal-card { max-width: 460px; margin-left: auto; margin-right: auto; }
+/* âmbar+contador = falta gente | neutro+relógio = aguardando confirmação | verde+check = confirmado */
+.esc-cal-day.is-gap { background: var(--accent-dim); color: var(--accent); font-weight: 700; }
+.esc-cal-day.is-gap:hover { background: var(--muted); }
+/* preenchido: fundo verde nos dois; o relógio (aguardando) x check (confirmado) diferencia */
+.esc-cal-day.is-pending { background: var(--primary-dim); color: var(--primary); }
+.esc-cal-day.is-pending:hover { background: var(--muted); }
+.esc-cal-day.is-confirmed { background: var(--primary-dim); color: var(--primary); }
+.esc-cal-day.is-confirmed:hover { background: var(--muted); }
+/* marcadores no CANTO INFERIOR — nunca sobre o número do dia (centralizado) */
+.esc-cal-count {
+  position: absolute; bottom: 2px; right: 2px;
+  min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+  background: var(--accent); color: #fff; font-size: .6rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+.esc-cal-clock { position: absolute; bottom: 2px; right: 3px; color: var(--primary); font-size: .66rem; }
+.esc-cal-check { position: absolute; bottom: 2px; right: 3px; color: var(--primary); font-size: .7rem; }
+/* dia já encerrado: cinza neutro, sem alarme — o âmbar de "vaga aberta" no
+   passado lia como pendência acionável, e não há o que fazer lá */
+.esc-cal-day.is-past { background: var(--muted); color: var(--muted-fg); font-weight: 400; }
+.esc-cal-day.is-past:hover { background: var(--border); }
+.esc-cal-day.is-past .esc-cal-check { color: var(--muted-fg); }
+
+.esc-cal-swatch.is-gap { background: var(--accent-dim); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); }
+.esc-cal-swatch.is-past { background: var(--muted); box-shadow: inset 0 0 0 1px var(--border); color: var(--muted-fg); }
+.esc-cal-swatch.is-pending { background: var(--primary-dim); box-shadow: inset 0 0 0 1px var(--primary); color: var(--primary); }
+.esc-cal-swatch.is-confirmed { background: var(--primary-dim); box-shadow: inset 0 0 0 1px var(--primary); color: var(--primary); }
+
+/* toolbar do calendário: filtro de ministério + atalho "próxima vaga aberta" */
+.esc-cal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.esc-cal-filter { flex: 1; min-width: 160px; }
+.esc-cal-nextgap { flex: 0 0 auto; white-space: nowrap; }
+
+/* atalho de volta ao mês corrente (só aparece fora dele) */
+.esc-cal-today-row { display: flex; justify-content: center; margin: -2px 0 10px; }
+
+.esc-cal-event.is-gap { border-left-color: var(--accent); }
+.esc-cal-event.is-pending { border-left-color: var(--muted-fg); }
+/* culto encerrado no detalhe: mesmo cinza neutro do dia, sem borda de alerta */
+.esc-cal-event.is-past { border-left-color: var(--border); background: var(--muted); }
+.esc-cal-event.is-covered { border-left-color: var(--primary); }
+.opcal-min { margin-top: 10px; }
+.opcal-min-name { font-size: .8rem; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.opcal-role-name { font-size: .82rem; font-weight: 600; color: var(--muted-fg); margin: 8px 0 4px; }
+/* linha de vaga uniforme: quem · status · ação — mesma altura sempre */
+.opcal-slot {
+  display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap;
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  margin-bottom: 4px; background: #fff;
+}
+.opcal-slot.is-open { border-style: dashed; background: none; }
+.opcal-slot-who { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: .9rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.opcal-slot-status { flex: 0 0 auto; }
+.opcal-slot-act { flex: 0 0 auto; white-space: nowrap; padding: 2px 8px; }
+
+/* 3+ abas: quebram para a linha de baixo (sempre visíveis) em vez de sumir num scroll */
+.subtabs { flex-wrap: wrap; row-gap: 0; }
+.subtabs .subtab { flex: 0 0 auto; white-space: nowrap; }
+
+/* Calendário: no mobile a linha da equipe empilha (função em cima, quem embaixo)
+   — nunca colapsa a coluna letra-a-letra, mesmo com nome fora do padrão. */
+@media (max-width: 768px) {
+  .esc-cal-team-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .esc-cal-team-row.is-mine { align-items: flex-start; }
+  .esc-cal-team-who { text-align: left; white-space: normal; }
+}
+
+/* ── Changelog / timeline (Novidades) ───────────────────── */
+.changelog-timeline { position: relative; padding: 4px 0; }
+/* a linha vertical à esquerda */
+.changelog-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px; top: 8px; bottom: 8px;
+  width: 2px;
+  background: var(--border);
+}
+.timeline-item { position: relative; padding: 0 0 26px 32px; }
+.timeline-item:last-child { padding-bottom: 0; }
+/* a bolinha (anel bronze; preenchida na versão atual) */
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--accent);
+  box-sizing: border-box;
+}
+.timeline-item.is-latest::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(189,117,34,.18);
+}
+.timeline-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.timeline-date { color: var(--muted-fg); font-size: .8rem; }
+.timeline-tag {
+  font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--ok); background: var(--ok-dim); padding: 2px 8px; border-radius: 999px;
+}
+.timeline-title {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 1.02rem; font-weight: 700; color: var(--fg); margin-bottom: 6px;
+}
+.timeline-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.timeline-list li { color: var(--fg); font-size: .9rem; line-height: 1.5; }
+
+/* ── Sub-abas (ex.: Minhas × Abertas no painel do voluntário) ──── */
+.subtabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+.subtab {
+  background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  padding: 9px 14px; cursor: pointer; color: var(--muted-fg); font-weight: 600;
+  display: flex; align-items: center; gap: 8px; font-size: .9rem; font-family: inherit;
+}
+.subtab:hover { background: none; color: var(--fg); }
+.subtab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.subtab-count {
+  background: var(--muted); color: var(--fg); border-radius: 999px;
+  padding: 1px 8px; font-size: .72rem; font-weight: 700;
+}
+.subtab.active .subtab-count { background: var(--primary); color: var(--primary-fg); }
+
+/* ══════════════════════════════════════════════════════════════════
+   APP EVENTOS — componentes do módulo Livraria
+   Estende o Emerald Archive reaproveitando os tokens do :root.
+   Nenhum hex solto: trocar de tema continua sendo mexer só no :root.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Cabeçalhos de tela ─────────────────────────────────────────── */
+.venda-header, .painel-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+}
+.venda-header h1, .painel-header h1 { margin: 0; font-size: 1.5rem }
+.venda-evento, .painel-evento {
+  display: block; font-size: .8rem; color: var(--muted-fg);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.venda-total { text-align: right }
+.venda-total span { display: block; font-size: .75rem; color: var(--muted-fg) }
+.venda-total strong { font-size: 1.5rem; color: var(--primary) }
+
+/* ── Busca ──────────────────────────────────────────────────────
+   Altura generosa: o alvo de toque precisa funcionar com o polegar,
+   em pé, com fila esperando.                                      */
+.venda-busca {
+  display: flex; align-items: center; gap: .6rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 0 .9rem; margin-bottom: 1rem;
+}
+.venda-busca i { color: var(--muted-fg) }
+.venda-busca input {
+  flex: 1; border: 0; background: none; padding: .95rem 0;
+  font-size: 1rem; color: var(--fg); outline: none;
+}
+.venda-busca button {
+  border: 0; background: none; color: var(--muted-fg);
+  cursor: pointer; padding: .5rem;
+}
+
+/* ── Resultados da busca ────────────────────────────────────────── */
+.venda-resultados { list-style: none; margin: 0 0 1.25rem; padding: 0 }
+.venda-resultados > li + li { margin-top: .4rem }
+.venda-resultados button {
+  width: 100%; display: flex; align-items: center; gap: .8rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .7rem .9rem;
+  text-align: left; cursor: pointer; font: inherit; color: inherit;
+  transition: border-color .12s, box-shadow .12s;
+}
+.venda-resultados button:hover, .venda-resultados button:focus-visible {
+  border-color: var(--primary); box-shadow: var(--shadow-hover);
+}
+.venda-resultados img, .venda-resultados .thumb-vazio {
+  width: 44px; height: 44px; border-radius: var(--radius-sm);
+  object-fit: cover; flex: 0 0 44px;
+}
+.venda-resultados .thumb-vazio {
+  display: grid; place-items: center;
+  background: var(--muted); color: var(--muted-fg);
+}
+.res-info { flex: 1; min-width: 0 }
+.res-info strong { display: block; font-weight: 600 }
+.res-info small { color: var(--muted-fg); font-size: .8rem }
+.res-preco { text-align: right; white-space: nowrap; font-weight: 600 }
+.res-preco small { display: block; font-weight: 400; font-size: .75rem; color: var(--muted-fg) }
+.res-preco small.critico { color: var(--warn); font-weight: 600 }
+
+/* ── Carrinho ───────────────────────────────────────────────────── */
+.venda-carrinho {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1rem; box-shadow: var(--shadow-card);
+}
+.venda-carrinho h2 { margin: 0 0 .75rem; font-size: .95rem; color: var(--muted-fg) }
+.venda-carrinho ul { list-style: none; margin: 0 0 1rem; padding: 0 }
+.venda-carrinho li {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem 0; border-bottom: 1px solid var(--border);
+}
+.cart-rotulo { flex: 1; min-width: 0 }
+.cart-rotulo small { display: block; font-size: .72rem; color: var(--muted-fg) }
+.cart-preco { font-weight: 600; white-space: nowrap }
+.venda-carrinho li button {
+  border: 0; background: none; color: var(--danger);
+  cursor: pointer; padding: .4rem;
+}
+
+/* ── Pagamento: botões, não select. Um toque, não três. ─────────── */
+.venda-pagamento .label {
+  display: block; font-size: .8rem; color: var(--muted-fg); margin-bottom: .4rem;
+}
+.pagamento-opcoes { display: flex; flex-wrap: wrap; gap: .5rem }
+.pagamento-btn {
+  flex: 1 1 auto; min-width: 90px; padding: .7rem .9rem;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); cursor: pointer; font: inherit;
+  color: var(--fg); font-weight: 500;
+}
+.pagamento-btn small { display: block; font-size: .7rem; color: var(--muted-fg) }
+.pagamento-btn.ativo {
+  border-color: var(--primary); background: var(--primary-dim); color: var(--primary);
+}
+.venda-taxa { margin: .8rem 0 0; font-size: .85rem; color: var(--muted-fg) }
+.venda-taxa small { display: block; font-size: .75rem }
+
+.venda-comprador { margin: .9rem 0 }
+.venda-comprador summary { cursor: pointer; font-size: .85rem; color: var(--muted-fg) }
+.venda-comprador input {
+  width: 100%; margin-top: .5rem; padding: .7rem .8rem;
+  border: 1px solid var(--border); border-radius: var(--radius); font: inherit;
+}
+
+/* O design system estiliza o <button> puro; não existe classe .btn. */
+.venda-acoes { display: flex; gap: .6rem; margin-top: 1rem }
+.venda-acoes button { flex: 1; padding: .9rem }
+.venda-acoes button:not(.secondary) { flex: 2 }
+
+/* ── Painel: meta ───────────────────────────────────────────────── */
+.meta-card { text-align: center; padding: 1.5rem 1.25rem }
+.meta-label {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted-fg);
+}
+.meta-barra {
+  height: 12px; background: var(--muted); border-radius: 99px;
+  overflow: hidden; margin: .9rem 0;
+}
+.meta-preenchida {
+  height: 100%; background: var(--primary); border-radius: 99px;
+  transition: width .35s ease;
+}
+.meta-valor { display: block; font-size: 2rem; color: var(--primary) }
+.meta-falta, .meta-sobra { margin: .4rem 0 0; color: var(--muted-fg) }
+.meta-sobra small { display: block; font-size: .75rem; margin-top: .2rem }
+
+/* ── Painel: números e atenção ──────────────────────────────────── */
+.stat-grid {
+  display: grid; gap: .75rem; margin: 1rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .9rem;
+}
+.stat-card span { display: block; font-size: .78rem; color: var(--muted-fg) }
+.stat-card strong { font-size: 1.35rem }
+.stat-card strong small { font-size: .8rem; font-weight: 400; color: var(--muted-fg) }
+
+.card-titulo { margin: 0 0 .8rem; font-size: .95rem; display: flex; align-items: center; gap: .5rem }
+.atencao-linha {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem 0; border-bottom: 1px solid var(--border);
+}
+.atencao-linha:last-child { border-bottom: 0 }
+
+.pagamento-mix { display: flex; flex-wrap: wrap; gap: 1.25rem }
+.pagamento-mix strong { display: block }
+.pagamento-mix small { color: var(--muted-fg); font-size: .75rem }
+
+/* ── Utilitários ────────────────────────────────────────────────── */
+.lista-cards { display: grid; gap: .75rem }
+.lista-cards .card { display: flex; align-items: center; justify-content: space-between; gap: 1rem }
+.lista-cards .card.ativo { border-color: var(--primary) }
+.card-acoes { display: flex; align-items: center; gap: .6rem }
+small.bloco { display: block; color: var(--muted-fg); font-size: .78rem }
+td.num, th.num { text-align: right; white-space: nowrap }
+td.num.critico { color: var(--danger); font-weight: 600 }
+.vazio { color: var(--muted-fg); padding: .8rem 0; text-align: center }
+
+/* ⚠ A .sidebar define o FUNDO escuro mas NÃO define cor de texto — quem tem cor
+   própria são os .nav-item. Qualquer bloco novo aqui dentro precisa declarar a
+   sua, senão herda a cor escura do corpo e fica invisível no escuro. */
+.sidebar-context {
+  padding: .75rem 1rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  color: var(--sidebar-fg);
+}
+.sidebar-context-label {
+  display: block; font-size: .68rem; text-transform: uppercase;
+  letter-spacing: .08em; opacity: .65;
+}
+.sidebar-context strong { font-size: .9rem; color: var(--sidebar-fg) }
+
+/* Mesa é celular: o carrinho fica grudado no rodapé para o polegar. */
+@media (max-width: 640px) {
+  .venda-acoes {
+    position: sticky; bottom: 0; background: var(--surface);
+    padding-top: .75rem; margin: 1rem -1rem -1rem; padding: .75rem 1rem 1rem;
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ── Correções de largura na listagem da mesa ────────────────────
+   O nome do item é longo ("Camiseta Simpósio UMP 2026") e o alvo é uma
+   tela de 390px. Sem truncar o NOME especificamente, ele empurra o preço
+   para fora e a pill do tamanho monta em cima do valor.                */
+.venda-resultados .res-info strong {
+  display: flex; align-items: center; gap: .4rem; min-width: 0;
+}
+.venda-resultados .res-nome {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.venda-resultados .res-info strong .pill { flex: 0 0 auto }
+.venda-resultados .res-info small {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.venda-resultados .res-preco { flex: 0 0 auto }
+
+/* O X nativo do input[type=search] duplicava o nosso botão de limpar. */
+.venda-busca input::-webkit-search-cancel-button { display: none }
+.venda-busca input { appearance: none; -webkit-appearance: none }
+
+/* ── Telas de cadastro ───────────────────────────────────────────
+   Duas colunas no desktop (formulário | lista), empilhadas no mobile. */
+.cadastro-grid {
+  display: grid; gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: start;
+}
+@media (max-width: 900px) { .cadastro-grid { grid-template-columns: 1fr } }
+
+.subtitulo { margin: .25rem 0 0; color: var(--muted-fg); font-size: .875rem }
+
+small.ajuda {
+  display: block; margin-top: .3rem;
+  color: var(--muted-fg); font-size: .78rem; line-height: 1.45;
+}
+small.opcional {
+  font-weight: 400; color: var(--muted-fg); font-size: .72rem;
+  text-transform: none; letter-spacing: 0;
+}
+
+.form-acoes { display: flex; gap: .5rem; justify-content: flex-end; margin-top: 1rem }
+.dupla { display: grid; gap: .75rem; grid-template-columns: 1fr 1fr }
+@media (max-width: 520px) { .dupla { grid-template-columns: 1fr } }
+
+/* Linha de registro: usada em fornecedores, catálogo, remessa e custos. */
+.linha-registro {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .7rem 0; border-bottom: 1px solid var(--border);
+}
+.linha-registro:last-child { border-bottom: 0 }
+.linha-registro.inativo { opacity: .55 }
+
+.mini-thumb {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  border-radius: var(--radius-sm); object-fit: cover;
+}
+.mini-thumb.vazia {
+  display: grid; place-items: center;
+  background: var(--muted); color: var(--muted-fg);
+}
+
+/* Variações no formulário do item */
+.variacoes { margin-top: .5rem }
+.variacao-linha { display: flex; gap: .5rem; align-items: center; margin-bottom: .4rem }
+.variacao-linha input { flex: 1 }
+
+/* Galeria de fotos do item */
+.fotos-bloco { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border) }
+.fotos-bloco h3 { margin: 0 0 .75rem; font-size: .95rem }
+.fotos-galeria { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .8rem }
+.fotos-galeria .foto { position: relative; margin: 0; width: 92px }
+.fotos-galeria img {
+  width: 92px; height: 92px; object-fit: cover;
+  border-radius: var(--radius-sm); border: 2px solid var(--border);
+}
+.fotos-galeria .foto.capa img { border-color: var(--accent) }
+.fotos-galeria figcaption {
+  position: absolute; top: 4px; left: 4px;
+  background: var(--accent); color: var(--accent-fg);
+  font-size: .65rem; padding: 1px 5px; border-radius: 99px;
+}
+.foto-acoes { display: flex; gap: .25rem; justify-content: center; margin-top: .25rem }
+.foto-acoes button {
+  border: 0; background: none; cursor: pointer;
+  color: var(--muted-fg); padding: .2rem .3rem; font-size: .85rem;
+}
+.foto-acoes button:hover { color: var(--fg) }
+
+/* Formulário de uma linha só (custos do evento) */
+.linha-form {
+  display: grid; gap: .5rem; align-items: center; margin-bottom: 1rem;
+  grid-template-columns: 2fr 1fr 1.2fr auto;
+}
+@media (max-width: 720px) { .linha-form { grid-template-columns: 1fr } }
+
+/* Totais da remessa */
+.totais {
+  display: flex; flex-wrap: wrap; gap: 1.5rem;
+  margin-top: 1rem; padding-top: .9rem; border-top: 2px solid var(--border);
+}
+.totais span { display: block; font-size: .75rem; color: var(--muted-fg) }
+.totais strong { font-size: 1.15rem }
+
+label.checkbox { display: flex; align-items: center; gap: .5rem; font-weight: 400 }
+label.checkbox input { width: auto }
+
+/* Instrução acima da lista da mesa: sem ela a tela abre como uma caixa de
+   busca solta no vazio e ninguém sabe o que fazer. */
+.venda-dica { margin: 0 0 .6rem; font-size: .8rem; color: var(--muted-fg) }
+
+/* ── Toasts ──────────────────────────────────────────────────────
+   Empilhados no canto. No celular ocupam a largura, ancorados EM CIMA:
+   embaixo ficariam sob o polegar e sob o rodapé fixo do carrinho.       */
+.toasts {
+  position: fixed; z-index: 400;
+  top: 16px; right: 16px;
+  display: flex; flex-direction: column; gap: .5rem;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+/* ⚠ As cores do .alert são translúcidas (--ok-dim etc.), o que funciona
+   embutido na página mas NÃO flutuando por cima: dava para ler o conteúdo
+   através do aviso. A camada de gradiente sobre var(--surface) mantém o tom
+   semântico e deixa o fundo opaco. */
+.toasts .toast {
+  pointer-events: auto;
+  box-shadow: var(--shadow-hover);
+  margin: 0;
+  align-items: flex-start;
+  background: var(--surface);
+}
+.toasts .toast.ok     { background: linear-gradient(var(--ok-dim), var(--ok-dim)), var(--surface) }
+.toasts .toast.warn   { background: linear-gradient(var(--warn-dim), var(--warn-dim)), var(--surface) }
+.toasts .toast.danger { background: linear-gradient(var(--danger-dim), var(--danger-dim)), var(--surface) }
+.toasts .toast.info   { background: linear-gradient(rgba(45,125,160,.10), rgba(45,125,160,.10)), var(--surface) }
+.toast-fechar {
+  border: 0; background: none; cursor: pointer;
+  color: inherit; opacity: .6; align-self: flex-start;
+  padding: .1rem .1rem .1rem .6rem; font-size: .85rem; line-height: 1;
+}
+.toast-fechar:hover { opacity: 1 }
+
+.toast-entrando { transition: opacity .18s ease, transform .18s ease }
+.toast-entrando[style*="display: none"], .toast-saindo { opacity: 0 }
+.toast-saindo { transition: opacity .15s ease, transform .15s ease; transform: translateX(12px) }
+
+@media (max-width: 640px) {
+  .toasts { top: 64px; right: 12px; left: 12px; width: auto }   /* abaixo da topbar */
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-entrando, .toast-saindo { transition: none }
+}
+
+/* ── Confirmação da venda ────────────────────────────────────────
+   O total precisa ser o elemento mais pesado da tela: é o número que a
+   pessoa confere em voz alta antes de o comprador pagar.               */
+.resumo-itens { list-style: none; margin: 0 0 .75rem; padding: 0 }
+.resumo-itens li {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: .4rem 0; border-bottom: 1px dashed var(--border);
+}
+.resumo-linha {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: .4rem 0; color: var(--muted-fg); font-size: .9rem;
+}
+.resumo-linha.comprador { border-top: 1px dashed var(--border) }
+.resumo-itens .valor, .resumo-linha .valor { white-space: nowrap; font-variant-numeric: tabular-nums }
+.resumo-total {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+  margin-top: .6rem; padding-top: .7rem; border-top: 2px solid var(--border);
+}
+.resumo-total strong { font-size: 1.6rem; color: var(--primary); font-variant-numeric: tabular-nums }
+.modal-acoes {
+  display: flex; gap: .6rem; padding: 0 18px 18px;
+}
+.modal-acoes button { flex: 1; padding: .85rem }
+.modal-acoes button:not(.secondary) { flex: 2 }
+.resumo-itens .codigo {
+  display: block; font-size: .72rem; color: var(--muted-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Reservados: x" — exemplar em carrinho de outro voluntário agora.
+   Cor de aviso, não de erro: não impede a venda, só pede combinação. */
+.venda-resultados .res-preco small.reservado {
+  color: var(--warn); font-weight: 600; display: block;
+  font-size: .72rem; white-space: nowrap;
+}
+small.bloco.obs { font-style: italic }
+
+/* Nome do item no estoque leva ao cadastro. O lápis só aparece no hover para
+   não poluir uma tabela que já tem sete colunas. */
+.link-item { color: inherit; text-decoration: none; font-weight: 600 }
+.link-item:hover, .link-item:focus-visible { color: var(--primary); text-decoration: underline }
+/* Discreto e SEMPRE visível: esconder no hover deixaria o atalho invisível no
+   celular, que é onde o app mais roda. O &nbsp; antes do ícone impede que ele
+   fique órfão numa linha quando o nome do item quebra. */
+.link-item .bi { opacity: .4; font-size: .8em; transition: opacity .12s }
+.link-item:hover .bi, .link-item:focus-visible .bi { opacity: 1 }
