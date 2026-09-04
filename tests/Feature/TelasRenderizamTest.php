@@ -56,6 +56,7 @@ class TelasRenderizamTest extends TestCase
             'venda'   => ['livraria.venda'],
             'estoque' => ['livraria.estoque'],
             'eventos' => ['eventos'],
+            'ajuda'   => ['ajuda'],
         ];
     }
 

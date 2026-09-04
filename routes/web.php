@@ -23,6 +23,10 @@ Route::post('/logout', function () {
 Route::middleware('auth')->group(function () {
     Route::livewire('/painel', 'painel')->name('painel');
 
+    // Central de ajuda (página estática) — sem permissão: todo mundo que entra
+    // precisa poder ler como o app funciona.
+    Route::view('/ajuda', 'ajuda')->name('ajuda');
+
     Route::livewire('/eventos', 'eventos')
         ->name('eventos')->middleware('can:eventos.ver');
 

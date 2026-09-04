@@ -111,6 +111,14 @@
             </nav>
 
             <div class="sidebar-footer">
+                {{-- Ajuda fica aqui, separada da navegação de trabalho: não é
+                     uma tela de operação, e no fim do menu ela é encontrada
+                     quando se procura, sem competir com o fluxo do dia. --}}
+                <a href="{{ route('ajuda') }}"
+                   class="nav-item {{ request()->routeIs('ajuda') ? 'active' : '' }}" style="margin-bottom:8px">
+                    <i class="bi bi-question-circle nav-icon"></i><span>Ajuda</span>
+                </a>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="sidebar-logout">
