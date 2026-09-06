@@ -470,6 +470,34 @@
     </details>
 
     <details class="help-item">
+        <summary>🔑 Perfis e acessos — desenhar o que cada função pode</summary>
+        <div class="help-body">
+            <p>Em <a href="{{ route('perfis') }}">Perfis</a> você cria os perfis da congregação
+            e marca, um a um, o que cada um pode fazer. <strong>A matriz salva sozinha</strong>
+            a cada toque.</p>
+            <p>Vêm três prontos, e eles cobrem o caso comum:</p>
+            <ul>
+                <li><strong>Administrador</strong> — tudo, inclusive pessoas e perfis.</li>
+                <li><strong>Coordenador da Livraria</strong> — monta o evento inteiro e libera
+                    quem se cadastra; não mexe em perfis.</li>
+                <li><strong>Operador de Mesa</strong> — vende e consulta. Não vê custo,
+                    remessa nem cadastro.</li>
+            </ul>
+            <p>Crie um novo quando precisar de um recorte que esses três não dão — por exemplo
+            alguém que confere a remessa sem enxergar o financeiro do Painel.</p>
+            <div class="tip">⚠️ <code>perfis.gerenciar</code> é a <strong>chave mestra</strong>:
+            quem a tem pode dar a si mesmo qualquer acesso. Reserve para pouquíssima gente.</div>
+            <div class="tip">💡 Você não consegue <strong>apagar o seu próprio perfil</strong>
+            nem tirar dele o "gerenciar perfis". É proposital: seria fechar a porta por dentro,
+            e a única saída seria pelo banco.</div>
+            <p><strong>Apagar um perfil não apaga ninguém.</strong> Quem o usava fica
+            <em>sem perfil</em> — continua entrando, mas só vê o Painel e esta Ajuda até
+            receber outro em <a href="{{ route('usuarios') }}">Pessoas</a>. A tela avisa quantas
+            pessoas serão afetadas antes de confirmar.</p>
+        </div>
+    </details>
+
+    <details class="help-item">
         <summary>🚧 O que ainda não está pronto</summary>
         <div class="help-body">
             <p>Para você não procurar um botão que não existe. Dá para montar e operar um evento
@@ -484,8 +512,6 @@
                     ainda não.</li>
                 <li><strong>Etiquetas para impressão</strong> — os códigos já são gerados na Remessa
                     (<code>ECC001</code>…), mas a folha para imprimir ainda não sai daqui.</li>
-                <li><strong>Perfis de acesso</strong> — dá para escolher entre os perfis que
-                    existem, mas criar um novo ou mudar as permissões de um ainda é no banco.</li>
             </ul>
         </div>
     </details>

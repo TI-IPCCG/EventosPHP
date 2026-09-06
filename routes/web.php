@@ -46,6 +46,11 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/usuarios', 'admin.usuarios')
         ->name('usuarios')->middleware('can:usuarios.ver');
 
+    // Perfis de acesso. perfis.gerenciar é a chave mestra — quem a tem pode se
+    // dar qualquer permissão —, então não há versão "só ver" desta tela.
+    Route::livewire('/perfis', 'admin.perfis')
+        ->name('perfis')->middleware('can:perfis.gerenciar');
+
     // ── Módulo Livraria ──
     Route::livewire('/livraria/venda', 'livraria.venda')
         ->name('livraria.venda')->middleware('can:livraria.vender');

@@ -128,10 +128,11 @@
 
                 {{-- ── Administração: vale para o app inteiro, não para um módulo ── --}}
                 @php($verAdmin = auth()->user()?->can('eventos.ver')
-                              || auth()->user()?->can('usuarios.ver'))
+                              || auth()->user()?->can('usuarios.ver')
+                              || auth()->user()?->can('perfis.gerenciar'))
                 @if ($verAdmin)
                     <details class="nav-group"
-                             @if (request()->routeIs('eventos', 'usuarios')) open @endif>
+                             @if (request()->routeIs('eventos', 'usuarios', 'perfis')) open @endif>
                         <summary>
                             <i class="bi bi-sliders2 nav-icon"></i><span>Administração</span>
                         </summary>
@@ -147,6 +148,13 @@
                             <a href="{{ route('usuarios') }}"
                                class="nav-item {{ request()->routeIs('usuarios') ? 'active' : '' }}">
                                 <i class="bi bi-people nav-icon"></i><span>Pessoas</span>
+                            </a>
+                        @endcan
+
+                        @can('perfis.gerenciar')
+                            <a href="{{ route('perfis') }}"
+                               class="nav-item {{ request()->routeIs('perfis') ? 'active' : '' }}">
+                                <i class="bi bi-shield-lock nav-icon"></i><span>Perfis</span>
                             </a>
                         @endcan
                     </details>
