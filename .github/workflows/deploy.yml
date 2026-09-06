@@ -1,0 +1,63 @@
+name: Deploy — cPanel (FTPS)
+
+# Dispara no push da main, ou manualmente pelo botão "Run workflow".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      # Não instalamos PHP/Composer aqui: o vendor/ é publicado à mão (ver
+      # DEPLOY.md §0), então o CI só precisa enviar o código-fonte.
+      #
+      # FTPS (TLS sobre a 21) porque é a ÚNICA porta aberta no cPanel da igreja
+      # — SSH externo é bloqueado, então rsync/SSH estão fora. A action mantém
+      # um arquivo de estado no servidor e, do 2º deploy em diante, envia só o
+      # que mudou.
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USER }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          # O usuário de deploy tem home em apps-core/ (a pasta-mãe de todos os
+          # apps), e não na pasta deste app — por isso o subdiretório aqui.
+          # Se um dia este app ganhar conta dedicada (home em apps-core/eventos),
+          # troque por "./" e nada mais muda: o arquivo de estado do envio
+          # incremental fica no mesmo lugar físico nos dois casos.
+          server-dir: ./eventos/
+          timeout: 60000
+          # O vendor/ (6.459 arquivos, mesmo sem as dev-deps) NÃO sobe pelo FTPS: uma conexão tão longa
+          # é derrubada pelo servidor ("FIN packet"). Vai à mão, por zip no File
+          # Manager, e só quando composer.lock muda (raro). Ver DEPLOY.md §0.
+          #
+          # .env e storage/ ficam de fora para PRESERVAR os de produção — subir
+          # os de dev derrubaria o app e apagaria as fotos já enviadas.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            .env
+            .env.example
+            vendor/**
+            storage/**
+            tests/**
+            node_modules/**
+            docker/**
+            scripts/**
+            phpunit.xml
+            .phpunit.result.cache
+            package.json
+            vite.config.js
+            eventos-deploy.zip
