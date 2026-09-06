@@ -188,6 +188,103 @@ class UsuariosTest extends TestCase
         $this->actingAs($zé)->get(route('usuarios'))->assertForbidden();
     }
 
+    /**
+     * A versão anterior deste teste só checava o título "Pessoas" — passava com
+     * a lista vazia, que foi exatamente o defeito que escapou para produção.
+     */
+    public function test_a_lista_mostra_quem_tem_vinculo_ativo(): void
+    {
+        $colega = $this->pessoa('colega'.uniqid().'@ipccg.org.br', true, $this->perfil->id);
+        $inativo = $this->pessoa('inativo'.uniqid().'@ipccg.org.br', false);
+
+        $this->actingAs($this->admin)->get(route('usuarios'))
+            ->assertOk()
+            ->assertSee($this->admin->name)      // o próprio admin aparece
+            ->assertSee($colega->name)
+            ->assertSee($inativo->name);         // na fila, não na lista
+
+        $this->assertTrue(true);
+    }
+
+    public function test_existe_o_perfil_administrador_com_todas_as_permissoes(): void
+    {
+        $this->seed(\Database\Seeders\PerfilSeeder::class);
+
+        $admin = SystemRole::withoutGlobalScopes()
+            ->where('church_id', 1)->where('name', 'Administrador')->first();
+
+        $this->assertNotNull($admin, 'o perfil Administrador não existe');
+        $this->assertSame(
+            Permission::count(),
+            $admin->permissions()->count(),
+            'o Administrador precisa ter TODAS as permissões',
+        );
+    }
+
+    public function test_coordenador_consegue_liberar_pessoas(): void
+    {
+        // Sem usuarios.gerenciar ele veria a fila sem conseguir agir.
+        $this->seed(\Database\Seeders\PerfilSeeder::class);
+
+        $coord = SystemRole::withoutGlobalScopes()
+            ->where('church_id', 1)->where('name', 'Coordenador da Livraria')->first();
+
+        $this->assertTrue(
+            $coord->permissions->contains('slug', 'usuarios.gerenciar'),
+            'o coordenador precisa poder liberar quem se cadastrou',
+        );
+    }
+
+    public function test_super_em_congregacao_sem_vinculo_e_avisado(): void
+    {
+        $super = $this->pessoa('forasteiro'.uniqid().'@ipccg.org.br', true, $this->perfil->id, true);
+
+        // Entra numa congregação onde ele NÃO tem vínculo.
+        session(['church_id' => 2]);
+
+        Livewire::actingAs($super)->test('admin.usuarios')
+            ->assertSet('busca', '')
+            ->assertSee('Você está vendo outra congregação');
+    }
+
+    public function test_desativado_continua_na_lista_e_pode_ser_reativado(): void
+    {
+        // O defeito que este teste barra: filtrar a lista por status=true faz
+        // quem é desativado sumir da tela, sem nenhum caminho para reativar.
+        $alvo = $this->pessoa('sumico'.uniqid().'@ipccg.org.br', true, $this->perfil->id);
+
+        Livewire::actingAs($this->admin)->test('admin.usuarios')
+            ->call('alternarAtivo', $alvo->id);
+
+        $this->assertFalse((bool) Membership::where('user_id', $alvo->id)->first()->status);
+
+        // Continua visível, agora marcado como inativo...
+        $this->actingAs($this->admin)->get(route('usuarios'))
+            ->assertOk()->assertSee($alvo->name);
+
+        // ...e volta com o mesmo botão.
+        Livewire::actingAs($this->admin)->test('admin.usuarios')
+            ->call('alternarAtivo', $alvo->id);
+
+        $this->assertTrue((bool) Membership::where('user_id', $alvo->id)->first()->status);
+    }
+
+    public function test_desativado_nao_volta_para_a_fila_de_pendentes(): void
+    {
+        $alvo = $this->pessoa('desat'.uniqid().'@ipccg.org.br', true, $this->perfil->id);
+
+        Livewire::actingAs($this->admin)->test('admin.usuarios')
+            ->call('alternarAtivo', $alvo->id);
+
+        $pendentes = Livewire::actingAs($this->admin)->test('admin.usuarios')
+            ->instance()->pendentes;
+
+        $this->assertFalse(
+            $pendentes->contains('id', $alvo->id),
+            'quem foi desativado não é um pedido novo — não pertence à fila',
+        );
+    }
+
     public function test_tela_renderiza_para_quem_pode(): void
     {
         $this->actingAs($this->admin)->get(route('usuarios'))

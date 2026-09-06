@@ -45,6 +45,11 @@ ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
 SET @church := 1;
 
 INSERT INTO `system_roles` (`church_id`, `name`)
+SELECT @church, 'Administrador' FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Administrador');
+
+INSERT INTO `system_roles` (`church_id`, `name`)
 SELECT @church, 'Coordenador da Livraria' FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Coordenador da Livraria');
@@ -54,13 +59,21 @@ SELECT @church, 'Operador de Mesa' FROM DUAL
 WHERE NOT EXISTS (
   SELECT 1 FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Operador de Mesa');
 
+SET @admin := (SELECT id FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Administrador');
 SET @coord := (SELECT id FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Coordenador da Livraria');
 SET @oper  := (SELECT id FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Operador de Mesa');
 
--- Coordenador: tudo do módulo + eventos.
+-- Administrador: TODAS. É o perfil que a tela de cadastro promete quando diz
+-- "seu acesso precisa ser liberado pelo Administrador" — sem ele, o app fala
+-- de um papel que não existe em lugar nenhum.
+INSERT IGNORE INTO `permission_system_role` (`system_role_id`, `permission_id`)
+SELECT @admin, p.id FROM `permissions` p;
+
+-- Coordenador: tudo do módulo + eventos. Inclui usuarios.gerenciar: sem ele o
+-- coordenador vê a fila de quem se cadastrou e não consegue liberar ninguém.
 INSERT IGNORE INTO `permission_system_role` (`system_role_id`, `permission_id`)
 SELECT @coord, p.id FROM `permissions` p
-WHERE p.slug IN ('eventos.ver','eventos.gerenciar','usuarios.ver',
+WHERE p.slug IN ('eventos.ver','eventos.gerenciar','usuarios.ver','usuarios.gerenciar',
                  'livraria.ver','livraria.catalogo','livraria.remessa',
                  'livraria.vender','livraria.baixar','livraria.fechamento');
 
@@ -145,7 +158,7 @@ VALUES ('Administrador', 'ti@ipccg.org.br', 'DEFINIR-VIA-TINKER', 1, NOW())
 ON DUPLICATE KEY UPDATE `is_super` = 1;
 
 INSERT IGNORE INTO `memberships` (`user_id`, `church_id`, `system_role_id`, `status`, `created_at`)
-SELECT u.id, @church, @coord, 1, NOW()
+SELECT u.id, @church, @admin, 1, NOW()
 FROM `users` u WHERE u.email = 'ti@ipccg.org.br';
 
 

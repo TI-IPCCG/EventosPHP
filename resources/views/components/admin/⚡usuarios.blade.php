@@ -57,28 +57,56 @@ class extends Component {
     }
 
     #[Computed]
+    public function congregacao()
+    {
+        return \App\Models\Church::find(session('church_id'));
+    }
+
+    /**
+     * Super-admin entra em QUALQUER congregação, inclusive numa onde não tem
+     * vínculo — e aí a lista vem vazia com toda a razão. Sem dizer isso, a tela
+     * parece quebrada.
+     */
+    #[Computed]
+    public function souDeFora(): bool
+    {
+        return ! Membership::where('user_id', auth()->id())
+            ->where('church_id', session('church_id'))->exists();
+    }
+
+    #[Computed]
     public function perfis()
     {
         return SystemRole::orderBy('name')->get();
     }
 
+    /**
+     * Fila = quem NUNCA foi liberado: vínculo inativo e ainda sem perfil, que é
+     * como o auto-cadastro cria. Quem foi desativado também tem vínculo
+     * inativo, mas guarda o perfil — e pertence à lista, marcado como inativo,
+     * senão sumiria da tela sem deixar como reativar.
+     */
     #[Computed]
     public function pendentes()
     {
         return User::naCongregacao()
             ->whereHas('memberships', fn ($q) => $q
-                ->where('church_id', session('church_id'))->where('status', false))
+                ->where('church_id', session('church_id'))
+                ->where('status', false)
+                ->whereNull('system_role_id'))
             ->with('memberships')
             ->orderBy('name')
             ->get();
     }
 
+    /** Todo mundo já liberado alguma vez — ativo ou não. */
     #[Computed]
     public function pessoas()
     {
         return User::naCongregacao()
             ->whereHas('memberships', fn ($q) => $q
-                ->where('church_id', session('church_id'))->where('status', true))
+                ->where('church_id', session('church_id'))
+                ->where(fn ($w) => $w->where('status', true)->orWhereNotNull('system_role_id')))
             ->when($this->busca !== '', fn ($q) => $q->where(fn ($w) => $w
                 ->where('name', 'like', '%'.$this->busca.'%')
                 ->orWhere('email', 'like', '%'.$this->busca.'%')))
@@ -349,10 +377,17 @@ class extends Component {
                 <span class="pill warn">{{ $this->pendentes->count() }}</span>
             </h2>
 
-            <p class="ajuda" style="margin-top:0">
-                Cadastraram-se pela tela pública. <strong>Escolha o perfil</strong> e libere —
-                sem perfil a pessoa entra, mas não enxerga nada além do Painel e da Ajuda.
-            </p>
+            @can('usuarios.gerenciar')
+                <p class="ajuda" style="margin-top:0">
+                    Cadastraram-se pela tela pública. <strong>Escolha o perfil</strong> e libere —
+                    sem perfil a pessoa entra, mas não enxerga nada além do Painel e da Ajuda.
+                </p>
+            @else
+                <p class="ajuda" style="margin-top:0">
+                    Cadastraram-se pela tela pública e aguardam liberação. Você pode ver a fila,
+                    mas quem libera é quem tem permissão para gerenciar pessoas.
+                </p>
+            @endcan
 
             @foreach ($this->pendentes as $p)
                 <div class="linha-registro">
@@ -462,7 +497,24 @@ class extends Component {
 
         {{-- ── lista ── --}}
         <section class="card">
-            <h2 class="card-titulo">Na congregação</h2>
+            <h2 class="card-titulo">
+                Em {{ $this->congregacao?->name ?? 'esta congregação' }}
+            </h2>
+
+            @if ($this->souDeFora)
+                <div class="alert info" role="alert" style="margin-bottom:12px">
+                    <div class="alert-content">
+                        <div class="alert-title">Você está vendo outra congregação</div>
+                        <div class="alert-message">
+                            Seu acesso é de super administrador, então você entra em qualquer
+                            congregação — inclusive numa em que não tem vínculo. O que aparece
+                            aqui é a lista
+                            <strong>{{ $this->congregacao?->name ?? 'da congregação escolhida' }}</strong>.
+                            Para ver a sua, saia e entre escolhendo-a no login.
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="table-toolbar">
                 <input type="search" class="table-search" wire:model.live.debounce.300ms="busca"
@@ -474,6 +526,11 @@ class extends Component {
                 <div class="linha-registro {{ $v && $v->status ? '' : 'inativo' }}">
                     <div>
                         <strong>{{ $p->name }}</strong>
+                        @if ($v && $v->status)
+                            <span class="pill open">ativo</span>
+                        @else
+                            <span class="pill closed">inativo</span>
+                        @endif
                         @if ($p->is_super) <span class="pill">super</span> @endif
                         @if ($p->id === auth()->id()) <span class="pill">você</span> @endif
                         <small class="bloco">
@@ -489,8 +546,10 @@ class extends Component {
                             @if ($p->id !== auth()->id())
                                 <button type="button" class="btn-sm btn-ghost"
                                         wire:click="alternarAtivo({{ $p->id }})"
-                                        wire:confirm="Desativar {{ $p->name }}? Ela deixa de entrar; o histórico não muda.">
-                                    Desativar
+                                        @if ($v && $v->status)
+                                            wire:confirm="Desativar {{ $p->name }}? Ela deixa de entrar; o histórico não muda."
+                                        @endif>
+                                    {{ $v && $v->status ? 'Desativar' : 'Reativar' }}
                                 </button>
                             @endif
                         </div>
@@ -498,7 +557,12 @@ class extends Component {
                 </div>
             @empty
                 <p class="vazio">
-                    {{ $busca !== '' ? 'Ninguém com esse nome ou e-mail.' : 'Ninguém ativo ainda.' }}
+                    @if ($busca !== '')
+                        Ninguém com esse nome ou e-mail.
+                    @else
+                        Ninguém com acesso ativo em
+                        {{ $this->congregacao?->name ?? 'esta congregação' }}.
+                    @endif
                 </p>
             @endforelse
         </section>
