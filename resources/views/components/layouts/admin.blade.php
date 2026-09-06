@@ -102,6 +102,13 @@
                     </a>
                 @endcan
 
+                @can('usuarios.ver')
+                    <a href="{{ route('usuarios') }}"
+                       class="nav-item {{ request()->routeIs('usuarios') ? 'active' : '' }}">
+                        <i class="bi bi-people nav-icon"></i><span>Pessoas</span>
+                    </a>
+                @endcan
+
                 @can('eventos.ver')
                     <a href="{{ route('eventos') }}"
                        class="nav-item {{ request()->routeIs('eventos') ? 'active' : '' }}">

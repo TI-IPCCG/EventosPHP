@@ -40,6 +40,12 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/eventos', 'eventos')
         ->name('eventos')->middleware('can:eventos.ver');
 
+    // Pessoas da congregação: liberar quem se cadastrou, definir perfil.
+    // Ver é uma permissão; agir é outra — o componente checa usuarios.gerenciar
+    // em cada ação, então quem só tem usuarios.ver enxerga sem poder mexer.
+    Route::livewire('/usuarios', 'admin.usuarios')
+        ->name('usuarios')->middleware('can:usuarios.ver');
+
     // ── Módulo Livraria ──
     Route::livewire('/livraria/venda', 'livraria.venda')
         ->name('livraria.venda')->middleware('can:livraria.vender');

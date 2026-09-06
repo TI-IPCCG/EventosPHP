@@ -391,27 +391,21 @@
                 <summary>🆕 Alguém se cadastrou — como liberar o acesso</summary>
                 <div class="help-sub-body">
                     <p>Quem se cadastra pela tela <strong>Criar conta</strong> entra na fila:
-                    a conta é criada, mas o vínculo com a congregação nasce
-                    <strong>pendente</strong> e <strong>sem perfil</strong>. Enquanto não for
-                    liberado, a pessoa vê no login <em>"Você não tem acesso ativo nesta
-                    congregação"</em>.</p>
+                    a conta é criada, mas o vínculo nasce <strong>pendente</strong> e
+                    <strong>sem perfil</strong>. Até ser liberada, a pessoa vê no login
+                    <em>"Você não tem acesso ativo nesta congregação"</em>.</p>
                     <p>É de propósito: o Painel mostra receita, custos e o quanto se deve aos
                     fornecedores. Cadastro que já entrasse ativo entregaria o financeiro do
                     evento a qualquer um.</p>
-                    <p><strong>Liberar tem dois passos</strong> — ativar o vínculo e dar um
-                    perfil. Sem o perfil a pessoa entra, mas não enxerga nada além do Painel e
-                    desta Ajuda. Hoje isso é feito no banco (a tela de Usuários ainda não
-                    existe):</p>
-                    <ul>
-                        <li>ver quem está esperando:
-                            <code>SELECT u.name, u.email, u.telefone FROM users u
-                            JOIN memberships m ON m.user_id = u.id WHERE m.status = 0;</code></li>
-                        <li>liberar: <code>UPDATE memberships SET status = 1,
-                            system_role_id = &lt;id do perfil&gt; WHERE user_id = &lt;id&gt;;</code></li>
-                    </ul>
-                    <div class="tip">💡 Os perfis prontos são <strong>Coordenador da
-                    Livraria</strong> e <strong>Operador de Mesa</strong>
-                    (<code>SELECT id, name FROM system_roles;</code>).</div>
+                    <p>Para liberar, abra <strong>Pessoas</strong> no menu. Quem está esperando
+                    aparece no topo, em <em>Aguardando liberação</em>, com e-mail e telefone:
+                    <strong>escolha o perfil e toque em Liberar</strong>. <em>Recusar</em>
+                    descarta o pedido — a conta continua existindo e a pessoa pode pedir de
+                    novo.</p>
+                    <div class="tip">💡 <strong>Liberar sem escolher perfil não adianta:</strong>
+                    a pessoa entra, mas não enxerga nada além do Painel e desta Ajuda. É o
+                    perfil que decide o que aparece no menu — por isso a tela recusa liberar
+                    sem ele.</div>
                 </div>
             </details>
 
@@ -446,6 +440,31 @@
     </details>
 
     <details class="help-item">
+        <summary>👥 Pessoas — quem entra e com qual perfil</summary>
+        <div class="help-body">
+            <p>Em <a href="{{ route('usuarios') }}">Pessoas</a> ficam os acessos da
+            congregação. Três coisas acontecem aqui:</p>
+            <ul>
+                <li><strong>Liberar quem se cadastrou</strong> — a fila fica no topo, porque é
+                    o que exige ação.</li>
+                <li><strong>Cadastrar direto</strong> — para quem não vai se cadastrar sozinho.
+                    Você define a senha do primeiro acesso; ela pode trocar depois em
+                    <em>Esqueci minha senha</em>.</li>
+                <li><strong>Editar e desativar</strong> — trocar perfil, corrigir contato,
+                    redefinir senha, ou tirar o acesso de quem saiu.</li>
+            </ul>
+            <p><strong>Desativar não apaga nada.</strong> A pessoa deixa de entrar, e tudo que
+            ela registrou continua no histórico do evento — que é o que você quer no acerto.</p>
+            <div class="tip">💡 <strong>Alguém que já usa outro app da igreja?</strong> Cadastre
+            com o mesmo e-mail: o sistema reconhece a pessoa e só acrescenta o vínculo com esta
+            congregação. <strong>A senha dela não muda</strong> — ela entra com a que já tem.</div>
+            <div class="tip">⚠️ Você <strong>não consegue desativar o próprio acesso</strong>
+            nem tirar o próprio super. É proposital: sem isso dá para se trancar do lado de
+            fora, e aí só o banco resolve.</div>
+        </div>
+    </details>
+
+    <details class="help-item">
         <summary>🚧 O que ainda não está pronto</summary>
         <div class="help-body">
             <p>Para você não procurar um botão que não existe. Dá para montar e operar um evento
@@ -460,6 +479,8 @@
                     ainda não.</li>
                 <li><strong>Etiquetas para impressão</strong> — os códigos já são gerados na Remessa
                     (<code>ECC001</code>…), mas a folha para imprimir ainda não sai daqui.</li>
+                <li><strong>Perfis de acesso</strong> — dá para escolher entre os perfis que
+                    existem, mas criar um novo ou mudar as permissões de um ainda é no banco.</li>
             </ul>
         </div>
     </details>
