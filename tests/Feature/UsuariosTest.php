@@ -285,6 +285,42 @@ class UsuariosTest extends TestCase
         );
     }
 
+    public function test_desativar_expulsa_quem_ja_esta_navegando(): void
+    {
+        // O buraco que este teste fecha: o /painel não exige permissão, então
+        // desativar zerava os acessos com `can:` mas deixava a pessoa lendo
+        // receita, custos e o devido aos fornecedores até a sessão expirar.
+        $alvo = $this->pessoa('navegando'.uniqid().'@ipccg.org.br', true, $this->perfil->id);
+
+        \App\Models\Event::firstOrCreate(
+            ['church_id' => 1, 'nome' => 'Evento do teste'],
+            ['inicio' => today(), 'status' => 'em_andamento'],
+        );
+
+        $this->actingAs($alvo);
+        $this->get(route('painel'))->assertOk();
+
+        Membership::where('user_id', $alvo->id)->where('church_id', 1)
+            ->update(['status' => false]);
+
+        $this->get(route('painel'))->assertRedirect(route('login'));
+        $this->assertGuest();
+    }
+
+    public function test_super_desativado_numa_congregacao_continua_entrando(): void
+    {
+        // Super circula entre congregações sem vínculo — mesma regra do login.
+        $super = $this->pessoa('supernav'.uniqid().'@ipccg.org.br', false, null, true);
+
+        \App\Models\Event::firstOrCreate(
+            ['church_id' => 1, 'nome' => 'Evento do teste'],
+            ['inicio' => today(), 'status' => 'em_andamento'],
+        );
+
+        $this->actingAs($super)->get(route('painel'))->assertOk();
+        $this->assertAuthenticated();
+    }
+
     public function test_tela_renderiza_para_quem_pode(): void
     {
         $this->actingAs($this->admin)->get(route('usuarios'))

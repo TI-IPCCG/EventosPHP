@@ -13,6 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             \App\Http\Middleware\SetChurchContext::class,
+            // Depois do SetChurchContext: precisa do church_id já resolvido.
+            \App\Http\Middleware\EnsureMembershipAtivo::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -454,7 +454,12 @@
                     redefinir senha, ou tirar o acesso de quem saiu.</li>
             </ul>
             <p><strong>Desativar não apaga nada.</strong> A pessoa deixa de entrar, e tudo que
-            ela registrou continua no histórico do evento — que é o que você quer no acerto.</p>
+            ela registrou continua no histórico do evento — que é o que você quer no acerto.
+            Ela continua na lista, marcada como <span class="pill closed">inativo</span>, e o
+            mesmo botão a traz de volta.</p>
+            <div class="tip">💡 <strong>Desativar vale na hora.</strong> Se a pessoa estiver
+            usando o app naquele momento, ela é levada de volta ao login na ação seguinte —
+            não fica com o Painel aberto até a sessão expirar.</div>
             <div class="tip">💡 <strong>Alguém que já usa outro app da igreja?</strong> Cadastre
             com o mesmo e-mail: o sistema reconhece a pessoa e só acrescenta o vínculo com esta
             congregação. <strong>A senha dela não muda</strong> — ela entra com a que já tem.</div>
