@@ -423,6 +423,29 @@
 
     {{-- ── Ainda não existe ───────────────────────────────────── --}}
     <details class="help-item">
+        <summary>🔐 Entrar, cadastrar-se e recuperar a senha</summary>
+        <div class="help-body">
+            <p>São três telas públicas, ligadas entre si pelos links do rodapé do card:</p>
+            <ul>
+                <li><strong>Entrar</strong> → congregação + e-mail + senha. A congregação
+                    importa: a mesma pessoa pode servir em mais de uma, e o acesso é
+                    <strong>por congregação</strong>.</li>
+                <li><strong>Criar conta</strong> → qualquer pessoa se cadastra, mas o acesso
+                    fica <strong>pendente</strong> até o Administrador liberar.</li>
+                <li><strong>Esqueci minha senha</strong> → chega um link por e-mail, válido
+                    por <strong>60 minutos</strong> e de <strong>uso único</strong>. Depois de
+                    usado, ele deixa de funcionar — pedir outro é só repetir.</li>
+            </ul>
+            <div class="tip">💡 <strong>Já tem conta e tentou se cadastrar de novo?</strong> A
+            tela responde "aguarde liberação" do mesmo jeito, mas nada muda — sua senha
+            continua a mesma, de propósito. Nesse caso o caminho é
+            <em>Esqueci minha senha</em>.</div>
+            <p>As três respondem igual exista o e-mail ou não. É de propósito: assim o
+            sistema não conta a quem está de fora quais e-mails têm cadastro.</p>
+        </div>
+    </details>
+
+    <details class="help-item">
         <summary>🚧 O que ainda não está pronto</summary>
         <div class="help-body">
             <p>Para você não procurar um botão que não existe. Dá para montar e operar um evento

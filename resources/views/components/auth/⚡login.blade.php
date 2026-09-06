@@ -116,6 +116,17 @@ class extends Component {
             <h2 class="auth-title">Entrar</h2>
             <p class="auth-subtitle">Escolha a congregação e informe seus dados.</p>
 
+            {{-- Vem da tela de redefinição: sem isto, quem acabou de trocar a
+                 senha volta para um login mudo, sem saber se deu certo. --}}
+            @if (session('aviso_login'))
+                <div class="alert ok" role="alert" aria-live="polite" style="margin-bottom:14px">
+                    <span class="alert-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+                    <div class="alert-content">
+                        <div class="alert-message">{{ session('aviso_login') }}</div>
+                    </div>
+                </div>
+            @endif
+
             @if ($errors->any())
                 <div class="alert danger" role="alert" aria-live="assertive" style="margin-bottom:14px">
                     <div class="alert-content">
@@ -157,6 +168,9 @@ class extends Component {
             <div class="auth-links">
                 <a class="link" href="{{ route('registrar') }}" wire:navigate>
                     Não tem conta? Cadastre-se
+                </a>
+                <a class="link" href="{{ route('password.request') }}" wire:navigate>
+                    Esqueci minha senha
                 </a>
             </div>
         </div>

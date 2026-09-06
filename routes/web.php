@@ -17,6 +17,11 @@ Route::livewire('/login', 'auth.login')->name('login');
 // componente. Quem libera é o responsável, hoje pelo banco.
 Route::livewire('/cadastro', 'auth.cadastro')->name('registrar');
 
+// Recuperação de senha. Os nomes password.request/password.reset são os que o
+// Laravel usa por convenção — mantidos para não surpreender quem conhece.
+Route::livewire('/esqueci-senha', 'auth.esqueci-senha')->name('password.request');
+Route::livewire('/redefinir-senha', 'auth.redefinir-senha')->name('password.reset');
+
 Route::post('/logout', function () {
     Auth::logout();
     session()->invalidate();

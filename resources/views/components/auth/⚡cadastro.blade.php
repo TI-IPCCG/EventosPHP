@@ -131,7 +131,7 @@ class extends Component {
                     <div class="alert-content">
                         <div class="alert-title">Tudo certo por aqui</div>
                         <div class="alert-message">
-                            Seu acesso precisa ser liberado por quem coordena a livraria.
+                            Seu acesso precisa ser liberado pelo Administrador.
                             Assim que isso acontecer, você entra com o e-mail e a senha
                             que acabou de cadastrar.
                         </div>
@@ -143,7 +143,7 @@ class extends Component {
                 </div>
             @else
                 <h2 class="auth-title">Criar conta</h2>
-                <p class="auth-subtitle">Cadastre-se e peça liberação ao responsável.</p>
+                <p class="auth-subtitle">Cadastre-se e peça liberação ao Administrador.</p>
 
                 @if ($errors->any())
                     <div class="alert danger" role="alert" aria-live="assertive" style="margin-bottom:14px">
@@ -183,7 +183,7 @@ class extends Component {
                         <input id="c-tel" type="text" wire:model="telefone"
                                inputmode="tel" maxlength="20" placeholder="(67) 90000-0000"
                                autocomplete="tel">
-                        <small>Opcional — é por aqui que o responsável te acha para liberar.</small>
+                        <small>Opcional — é por aqui que o Administrador te acha para liberar.</small>
                     </div>
 
                     <div>
