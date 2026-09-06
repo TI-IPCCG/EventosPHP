@@ -58,12 +58,21 @@
                 </div>
             @endif
 
+            {{-- Menu em grupos: os dois itens do dia a dia ficam soltos no topo,
+                 o resto se recolhe. Cada MÓDULO novo entra como um <details>
+                 próprio — é isso que impede a barra de virar uma lista rolante
+                 conforme o app cresce.
+
+                 O grupo abre sozinho quando a tela aberta está dentro dele, para
+                 a pessoa nunca ter de caçar onde está. --}}
             <nav class="sidebar-nav">
                 <a href="{{ route('painel') }}"
                    class="nav-item {{ request()->routeIs('painel') ? 'active' : '' }}">
                     <i class="bi bi-speedometer2 nav-icon"></i><span>Painel</span>
                 </a>
 
+                {{-- A mesa fica fora de grupo: é a tela mais usada durante o
+                     evento, e um toque a mais na fila custa caro. --}}
                 @can('livraria.vender')
                     <a href="{{ route('livraria.venda') }}"
                        class="nav-item {{ request()->routeIs('livraria.venda') ? 'active' : '' }}">
@@ -71,50 +80,77 @@
                     </a>
                 @endcan
 
-                @can('ver-livraria')
-                    <a href="{{ route('livraria.estoque') }}"
-                       class="nav-item {{ request()->routeIs('livraria.estoque') ? 'active' : '' }}">
-                        <i class="bi bi-box-seam nav-icon"></i><span>Estoque</span>
-                    </a>
-                @endcan
+                {{-- ── Módulo Livraria ── --}}
+                @php($verLivraria = auth()->user()?->can('ver-livraria')
+                                 || auth()->user()?->can('livraria.remessa')
+                                 || auth()->user()?->can('livraria.catalogo'))
+                @if ($verLivraria)
+                    <details class="nav-group"
+                             @if (request()->routeIs('livraria.estoque', 'livraria.remessa',
+                                                     'livraria.catalogo', 'livraria.categorias',
+                                                     'livraria.fornecedores')) open @endif>
+                        <summary>
+                            <i class="bi bi-book nav-icon"></i><span>Livraria</span>
+                        </summary>
 
-                @can('livraria.remessa')
-                    <a href="{{ route('livraria.remessa') }}"
-                       class="nav-item {{ request()->routeIs('livraria.remessa') ? 'active' : '' }}">
-                        <i class="bi bi-truck nav-icon"></i><span>Remessa</span>
-                    </a>
-                @endcan
+                        @can('ver-livraria')
+                            <a href="{{ route('livraria.estoque') }}"
+                               class="nav-item {{ request()->routeIs('livraria.estoque') ? 'active' : '' }}">
+                                <i class="bi bi-box-seam nav-icon"></i><span>Estoque</span>
+                            </a>
+                        @endcan
 
-                @can('livraria.catalogo')
-                    <a href="{{ route('livraria.catalogo') }}"
-                       class="nav-item {{ request()->routeIs('livraria.catalogo') ? 'active' : '' }}">
-                        <i class="bi bi-journals nav-icon"></i><span>Catálogo</span>
-                    </a>
+                        @can('livraria.remessa')
+                            <a href="{{ route('livraria.remessa') }}"
+                               class="nav-item {{ request()->routeIs('livraria.remessa') ? 'active' : '' }}">
+                                <i class="bi bi-truck nav-icon"></i><span>Remessa</span>
+                            </a>
+                        @endcan
 
-                    <a href="{{ route('livraria.categorias') }}"
-                       class="nav-item {{ request()->routeIs('livraria.categorias') ? 'active' : '' }}">
-                        <i class="bi bi-tags nav-icon"></i><span>Categorias</span>
-                    </a>
+                        @can('livraria.catalogo')
+                            <a href="{{ route('livraria.catalogo') }}"
+                               class="nav-item {{ request()->routeIs('livraria.catalogo') ? 'active' : '' }}">
+                                <i class="bi bi-journals nav-icon"></i><span>Catálogo</span>
+                            </a>
 
-                    <a href="{{ route('livraria.fornecedores') }}"
-                       class="nav-item {{ request()->routeIs('livraria.fornecedores') ? 'active' : '' }}">
-                        <i class="bi bi-shop nav-icon"></i><span>Fornecedores</span>
-                    </a>
-                @endcan
+                            <a href="{{ route('livraria.categorias') }}"
+                               class="nav-item {{ request()->routeIs('livraria.categorias') ? 'active' : '' }}">
+                                <i class="bi bi-tags nav-icon"></i><span>Categorias</span>
+                            </a>
 
-                @can('usuarios.ver')
-                    <a href="{{ route('usuarios') }}"
-                       class="nav-item {{ request()->routeIs('usuarios') ? 'active' : '' }}">
-                        <i class="bi bi-people nav-icon"></i><span>Pessoas</span>
-                    </a>
-                @endcan
+                            <a href="{{ route('livraria.fornecedores') }}"
+                               class="nav-item {{ request()->routeIs('livraria.fornecedores') ? 'active' : '' }}">
+                                <i class="bi bi-shop nav-icon"></i><span>Fornecedores</span>
+                            </a>
+                        @endcan
+                    </details>
+                @endif
 
-                @can('eventos.ver')
-                    <a href="{{ route('eventos') }}"
-                       class="nav-item {{ request()->routeIs('eventos') ? 'active' : '' }}">
-                        <i class="bi bi-calendar3 nav-icon"></i><span>Eventos</span>
-                    </a>
-                @endcan
+                {{-- ── Administração: vale para o app inteiro, não para um módulo ── --}}
+                @php($verAdmin = auth()->user()?->can('eventos.ver')
+                              || auth()->user()?->can('usuarios.ver'))
+                @if ($verAdmin)
+                    <details class="nav-group"
+                             @if (request()->routeIs('eventos', 'usuarios')) open @endif>
+                        <summary>
+                            <i class="bi bi-sliders2 nav-icon"></i><span>Administração</span>
+                        </summary>
+
+                        @can('eventos.ver')
+                            <a href="{{ route('eventos') }}"
+                               class="nav-item {{ request()->routeIs('eventos') ? 'active' : '' }}">
+                                <i class="bi bi-calendar3 nav-icon"></i><span>Eventos</span>
+                            </a>
+                        @endcan
+
+                        @can('usuarios.ver')
+                            <a href="{{ route('usuarios') }}"
+                               class="nav-item {{ request()->routeIs('usuarios') ? 'active' : '' }}">
+                                <i class="bi bi-people nav-icon"></i><span>Pessoas</span>
+                            </a>
+                        @endcan
+                    </details>
+                @endif
             </nav>
 
             <div class="sidebar-footer">
