@@ -122,7 +122,7 @@ consulta cross-schema das congregações depende disso:
 | Arquivo | O que faz | Obrigatório |
 |---|---|---|
 | `database/sql/01-core.sql` | identidade, ACL e `events` — 8 tabelas | sim |
-| `database/sql/02-modulo-livraria.sql` | módulo livraria, prefixo `liv_` — 17 tabelas | sim |
+| `database/sql/02-modulo-livraria.sql` | módulo livraria, prefixo `liv_` — 18 tabelas | sim |
 | `database/sql/03-seed-referencia.sql` | permissões, perfis, categorias, motivos de baixa, primeiro admin | sim |
 | `database/sql/04-triggers.sql` | gatilhos da RN09 (um exemplar não sai duas vezes) | recomendado |
 
@@ -132,6 +132,14 @@ consulta cross-schema das congregações depende disso:
 - o **e-mail e o nome** do primeiro administrador (linha do `INSERT INTO users`)
 
 O `03` é idempotente e termina com um `SELECT` de conferência.
+
+Ao final, `ipccgorg_Eventos` tem **26 tabelas** (8 do `01` + 18 do `02`) e,
+se o `04` passou, 2 gatilhos:
+
+```sql
+SELECT COUNT(*) FROM information_schema.tables
+ WHERE table_schema = 'ipccgorg_Eventos';   -- 26
+```
 
 > O `04` usa `DELIMITER`: importe pela aba **Importar**. Colando na aba **SQL**,
 > preencha "Delimitador" com `$$`. Se o host não conceder o privilégio TRIGGER,

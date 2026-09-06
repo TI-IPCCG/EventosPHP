@@ -244,7 +244,7 @@ Rode os arquivos **em ordem**, dentro do schema `ipccgorg_Eventos`:
 | Arquivo | O que faz | Obrigatório |
 |---|---|---|
 | [`database/sql/01-core.sql`](database/sql/01-core.sql) | Núcleo: identidade, ACL e `events` — 8 tabelas | sim |
-| [`database/sql/02-modulo-livraria.sql`](database/sql/02-modulo-livraria.sql) | Módulo livraria, prefixo `liv_` — 17 tabelas | sim |
+| [`database/sql/02-modulo-livraria.sql`](database/sql/02-modulo-livraria.sql) | Módulo livraria, prefixo `liv_` — 18 tabelas | sim |
 | [`database/sql/03-seed-referencia.sql`](database/sql/03-seed-referencia.sql) | Permissões, perfis, **categorias e seus campos**, motivos de baixa, primeiro acesso | sim |
 | [`database/sql/04-triggers.sql`](database/sql/04-triggers.sql) | Gatilhos da RN09 (um exemplar não sai duas vezes) | recomendado |
 | [`database/sql/99-teste-de-cenario.sql`](database/sql/99-teste-de-cenario.sql) | Encena um evento com livro **e** camiseta e confere a aritmética | **só em dev** |
@@ -333,7 +333,7 @@ não é o que roda em produção.
 
 **No SQL puro:**
 
-- os 5 arquivos SQL rodam do zero, em ordem, sem erro → 21 tabelas, 2 gatilhos
+- os 5 arquivos SQL rodam do zero, em ordem, sem erro → 26 tabelas, 2 gatilhos
 - **resultado do evento** (RF24/RN04) bate com a conta à mão em um cenário
   encenado: receita 126,00 − devido 108,00 − custos 200,00 − taxas 2,03
 - **RN09, mesma tabela:** vender o mesmo exemplar duas vezes é rejeitado pelo

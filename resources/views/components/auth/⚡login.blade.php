@@ -153,6 +153,12 @@ class extends Component {
                     <span wire:loading wire:target="authenticate">Entrando…</span>
                 </button>
             </form>
+
+            <div class="auth-links">
+                <a class="link" href="{{ route('registrar') }}" wire:navigate>
+                    Não tem conta? Cadastre-se
+                </a>
+            </div>
         </div>
     </div>
 </div>

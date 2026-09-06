@@ -12,6 +12,11 @@ Route::get('/', fn () => redirect()->route('login'));
 
 Route::livewire('/login', 'auth.login')->name('login');
 
+// Auto-cadastro. Fica FORA do middleware auth de propósito: é a porta de
+// entrada de quem ainda não tem conta. O vínculo nasce pendente — ver o
+// componente. Quem libera é o responsável, hoje pelo banco.
+Route::livewire('/cadastro', 'auth.cadastro')->name('registrar');
+
 Route::post('/logout', function () {
     Auth::logout();
     session()->invalidate();
