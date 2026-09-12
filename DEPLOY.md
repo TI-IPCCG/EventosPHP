@@ -125,6 +125,7 @@ consulta cross-schema das congregações depende disso:
 | `database/sql/02-modulo-livraria.sql` | módulo livraria, prefixo `liv_` — 18 tabelas | sim |
 | `database/sql/03-seed-referencia.sql` | permissões, perfis, categorias, motivos de baixa, primeiro admin | sim |
 | `database/sql/04-triggers.sql` | gatilhos da RN09 (um exemplar não sai duas vezes) | recomendado |
+| `database/sql/05-modulo-participantes.sql` | módulo participantes, prefixo `par_` — 7 tabelas | sim |
 
 **Antes de rodar o `03`, edite no arquivo:**
 - `SET @church := 1;` → o id real em `ipccgorg_ModernApps.churches`
@@ -133,12 +134,12 @@ consulta cross-schema das congregações depende disso:
 
 O `03` é idempotente e termina com um `SELECT` de conferência.
 
-Ao final, `ipccgorg_Eventos` tem **26 tabelas** (8 do `01` + 18 do `02`) e,
-se o `04` passou, 2 gatilhos:
+Ao final, `ipccgorg_Eventos` tem **33 tabelas** (8 do `01` + 18 do `02` + 7 do
+`05`) e, se o `04` passou, 2 gatilhos:
 
 ```sql
 SELECT COUNT(*) FROM information_schema.tables
- WHERE table_schema = 'ipccgorg_Eventos';   -- 26
+ WHERE table_schema = 'ipccgorg_Eventos';   -- 33
 ```
 
 > O `04` usa `DELIMITER`: importe pela aba **Importar**. Colando na aba **SQL**,

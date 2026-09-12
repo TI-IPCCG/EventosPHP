@@ -1,6 +1,6 @@
 -- =====================================================================
 --  App EVENTOS — IPCCG
---  Arquivo 04 de 04: TRIGGERS DA RN09
+--  Arquivo 04 de 05: TRIGGERS DA RN09
 --  Schema: ipccgorg_Eventos          Rodar DEPOIS do 02
 -- ---------------------------------------------------------------------
 --  Por que existe: o índice UNIQUE em `copy_ativo` impede vender o mesmo

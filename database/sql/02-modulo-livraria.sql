@@ -1,6 +1,6 @@
 -- =====================================================================
 --  App EVENTOS — IPCCG
---  Arquivo 02 de 04: MÓDULO LIVRARIA  (prefixo liv_)
+--  Arquivo 02 de 05: MÓDULO LIVRARIA  (prefixo liv_)
 --  Schema: ipccgorg_Eventos          Rodar DEPOIS do 01-core.sql
 -- ---------------------------------------------------------------------
 --  Todo o módulo pendura em `events` (núcleo). Os próximos módulos usam

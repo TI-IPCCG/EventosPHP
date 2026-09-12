@@ -247,6 +247,7 @@ Rode os arquivos **em ordem**, dentro do schema `ipccgorg_Eventos`:
 | [`database/sql/02-modulo-livraria.sql`](database/sql/02-modulo-livraria.sql) | Módulo livraria, prefixo `liv_` — 18 tabelas | sim |
 | [`database/sql/03-seed-referencia.sql`](database/sql/03-seed-referencia.sql) | Permissões, perfis, **categorias e seus campos**, motivos de baixa, primeiro acesso | sim |
 | [`database/sql/04-triggers.sql`](database/sql/04-triggers.sql) | Gatilhos da RN09 (um exemplar não sai duas vezes) | recomendado |
+| [`database/sql/05-modulo-participantes.sql`](database/sql/05-modulo-participantes.sql) | Módulo participantes, prefixo `par_` — 7 tabelas | sim |
 | [`database/sql/99-teste-de-cenario.sql`](database/sql/99-teste-de-cenario.sql) | Encena um evento com livro **e** camiseta e confere a aritmética | **só em dev** |
 
 Antes de rodar o `03`, ajuste no topo do arquivo:
@@ -328,8 +329,8 @@ Rodam contra o MySQL real (não SQLite): o schema depende de coluna gerada com
 índice único, gatilho e ENUM, e testar noutro banco daria verde num lugar que
 não é o que roda em produção.
 
-**Paridade migrations × SQL:** `scripts/comparar-schema.py` → 177 colunas,
-74 índices e 32 chaves estrangeiras idênticas nos dois caminhos.
+**Paridade migrations × SQL:** `scripts/comparar-schema.py` → 276 colunas,
+113 índices e 48 chaves estrangeiras idênticas nos dois caminhos.
 
 **No SQL puro:**
 

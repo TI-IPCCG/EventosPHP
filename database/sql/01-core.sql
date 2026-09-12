@@ -1,6 +1,6 @@
 -- =====================================================================
 --  App EVENTOS — IPCCG
---  Arquivo 01 de 03: NÚCLEO (identidade, ACL e eventos)
+--  Arquivo 01 de 05: NÚCLEO (identidade, ACL e eventos)
 --  Schema: ipccgorg_Eventos          Conexão Laravel: mysql (default)
 -- ---------------------------------------------------------------------
 --  Como rodar no cPanel:

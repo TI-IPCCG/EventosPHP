@@ -1,6 +1,6 @@
 -- =====================================================================
 --  App EVENTOS — IPCCG
---  Arquivo 03 de 03: DADOS DE REFERÊNCIA
+--  Arquivo 03 de 05: DADOS DE REFERÊNCIA
 --  Schema: ipccgorg_Eventos          Rodar DEPOIS do 01 e do 02
 -- ---------------------------------------------------------------------
 --  Este arquivo é IDEMPOTENTE: pode rodar de novo sem duplicar nada.
