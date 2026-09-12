@@ -28,6 +28,12 @@ class PermissionSeeder extends Seeder
         'livraria.vender'     => 'Registrar vendas na mesa',
         'livraria.baixar'     => 'Dar baixa em exemplar sem venda (sorteio, cortesia, doação, perda)',
         'livraria.fechamento' => 'Fechar o evento: acerto dos fornecedores, devolução e resultado',
+        // módulo participantes
+        'participantes.ver'        => 'Ver os inscritos do evento e a presença',
+        'participantes.checkin'    => 'Registrar entrada na portaria',
+        'participantes.gerenciar'  => 'Cadastrar e editar inscritos, dias e configurações',
+        'participantes.importar'   => 'Importar a planilha de inscrições',
+        'participantes.enviar'     => 'Enviar as credenciais com QR por e-mail',
     ];
 
     public function run(): void

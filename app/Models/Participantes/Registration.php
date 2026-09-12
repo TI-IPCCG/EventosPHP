@@ -55,6 +55,18 @@ class Registration extends Model
         $this->attributes['cpf'] = preg_replace('/\D/', '', (string) $valor) ?: null;
     }
 
+    /**
+     * O snapshot normaliza igual à pessoa: é este nome que vai no crachá e na
+     * lista de presença, e o formulário vem cheio de CAIXA ALTA e espaço duplo.
+     * Congelar o dado não é motivo para congelá-lo feio.
+     */
+    public function setNomeAttribute($valor): void
+    {
+        $limpo = preg_replace('/\s+/', ' ', trim((string) $valor));
+
+        $this->attributes['nome'] = mb_convert_case($limpo, MB_CASE_TITLE, 'UTF-8');
+    }
+
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class, 'event_id');

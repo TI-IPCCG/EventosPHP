@@ -48,5 +48,16 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('operar-mesa', fn (User $user) => $user->hasPermission('livraria.vender')
             || $user->hasPermission('livraria.baixar'));
+
+        /*
+         | Mesmo footgun do ver-livraria: o voluntário da portaria tem só
+         | `participantes.checkin` e tomaria 403 na tela que precisa operar se a
+         | rota exigisse `participantes.ver`.
+         */
+        Gate::define('ver-participantes', fn (User $user) => $user->hasPermission('participantes.ver')
+            || $user->hasPermission('participantes.checkin')
+            || $user->hasPermission('participantes.gerenciar')
+            || $user->hasPermission('participantes.importar')
+            || $user->hasPermission('participantes.enviar'));
     }
 }

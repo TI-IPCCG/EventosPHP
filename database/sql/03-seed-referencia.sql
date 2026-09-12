@@ -33,7 +33,13 @@ INSERT INTO `permissions` (`slug`, `description`) VALUES
   ('livraria.remessa',    'Montar remessas, lançar custos, definir preços e gerar etiquetas'),
   ('livraria.vender',     'Registrar vendas na mesa'),
   ('livraria.baixar',     'Dar baixa em exemplar sem venda (sorteio, cortesia, doação, perda)'),
-  ('livraria.fechamento', 'Fechar o evento: acerto dos fornecedores, devolução e resultado')
+  ('livraria.fechamento', 'Fechar o evento: acerto dos fornecedores, devolução e resultado'),
+  -- módulo participantes
+  ('participantes.ver',       'Ver os inscritos do evento e a presença'),
+  ('participantes.checkin',   'Registrar entrada na portaria'),
+  ('participantes.gerenciar', 'Cadastrar e editar inscritos, dias e configurações'),
+  ('participantes.importar',  'Importar a planilha de inscrições'),
+  ('participantes.enviar',    'Enviar as credenciais com QR por e-mail')
 ON DUPLICATE KEY UPDATE `description` = VALUES(`description`);
 
 
@@ -75,7 +81,23 @@ INSERT IGNORE INTO `permission_system_role` (`system_role_id`, `permission_id`)
 SELECT @coord, p.id FROM `permissions` p
 WHERE p.slug IN ('eventos.ver','eventos.gerenciar','usuarios.ver','usuarios.gerenciar',
                  'livraria.ver','livraria.catalogo','livraria.remessa',
-                 'livraria.vender','livraria.baixar','livraria.fechamento');
+                 'livraria.vender','livraria.baixar','livraria.fechamento',
+                 'participantes.ver','participantes.checkin','participantes.gerenciar',
+                 'participantes.importar','participantes.enviar');
+
+-- Portaria: o voluntário que fica na porta. Marca presença e não vê o
+-- financeiro do evento — o Painel mostra receita, custo e o devido aos
+-- fornecedores, e isso não é assunto de quem está conferindo crachá.
+INSERT INTO `system_roles` (`church_id`, `name`)
+SELECT @church, 'Portaria' FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Portaria');
+
+SET @portaria := (SELECT id FROM `system_roles` WHERE `church_id` = @church AND `name` = 'Portaria');
+
+INSERT IGNORE INTO `permission_system_role` (`system_role_id`, `permission_id`)
+SELECT @portaria, p.id FROM `permissions` p
+WHERE p.slug IN ('eventos.ver','participantes.ver','participantes.checkin');
 
 -- Operador de mesa: vende e consulta. Baixa entra aqui ou não conforme a
 -- resposta da pendência P06 — se só o coordenador puder autorizar,

@@ -28,10 +28,17 @@ class PerfilSeeder extends Seeder
             'eventos.ver', 'eventos.gerenciar', 'usuarios.ver', 'usuarios.gerenciar',
             'livraria.ver', 'livraria.catalogo', 'livraria.remessa',
             'livraria.vender', 'livraria.baixar', 'livraria.fechamento',
+            'participantes.ver', 'participantes.checkin', 'participantes.gerenciar',
+            'participantes.importar', 'participantes.enviar',
         ],
 
         'Operador de Mesa' => [
             'eventos.ver', 'livraria.ver', 'livraria.vender', 'livraria.baixar',
+        ],
+
+        // O voluntário que fica na porta: marca presença e não vê o financeiro.
+        'Portaria' => [
+            'eventos.ver', 'participantes.ver', 'participantes.checkin',
         ],
     ];
 
