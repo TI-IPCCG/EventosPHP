@@ -61,6 +61,38 @@ class Event extends Model
         return $this->hasMany(Livraria\PaymentMethod::class, 'event_id')->orderBy('ordem');
     }
 
+    // ── módulo participantes ──
+
+    public function participantesSettings(): HasOne
+    {
+        return $this->hasOne(Participantes\EventSetting::class, 'event_id');
+    }
+
+    public function dias(): HasMany
+    {
+        return $this->hasMany(Participantes\EventDay::class, 'event_id')
+            ->orderBy('data')
+            ->orderBy('id');
+    }
+
+    public function inscricoes(): HasMany
+    {
+        return $this->hasMany(Participantes\Registration::class, 'event_id');
+    }
+
+    /**
+     * "Agora" na hora-de-parede da congregação DESTE evento.
+     *
+     * ⚠ Existe para que nenhuma escrita do módulo precise de now(). O
+     * middleware SetChurchContext aplica o fuso da igreja só no caminho web —
+     * comando de terminal e worker ficam em UTC, e três horas de diferença
+     * corromperiam todo o registro de presença sem sintoma nenhum.
+     */
+    public function agora(): \Illuminate\Support\Carbon
+    {
+        return Church::agora($this->church_id);
+    }
+
     public function scopeEmAndamento($query)
     {
         return $query->where('status', 'em_andamento');
