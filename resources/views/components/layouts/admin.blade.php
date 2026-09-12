@@ -80,6 +80,42 @@
                     </a>
                 @endcan
 
+                @can('participantes.checkin')
+                    <a href="{{ route('participantes.checkin') }}"
+                       class="nav-item {{ request()->routeIs('participantes.checkin') ? 'active' : '' }}">
+                        <i class="bi bi-person-check nav-icon"></i><span>Check-in</span>
+                    </a>
+                @endcan
+
+                {{-- ── Módulo Participantes ── --}}
+                @php($verParticipantes = auth()->user()?->can('ver-participantes'))
+                @if ($verParticipantes)
+                    <details class="nav-group"
+                             @if (request()->routeIs('participantes.inscritos', 'participantes.dias',
+                                                     'participantes.lista')) open @endif>
+                        <summary>
+                            <i class="bi bi-people-fill nav-icon"></i><span>Participantes</span>
+                        </summary>
+
+                        <a href="{{ route('participantes.inscritos') }}"
+                           class="nav-item {{ request()->routeIs('participantes.inscritos') ? 'active' : '' }}">
+                            <i class="bi bi-card-list nav-icon"></i><span>Inscritos</span>
+                        </a>
+
+                        <a href="{{ route('participantes.lista') }}"
+                           class="nav-item {{ request()->routeIs('participantes.lista') ? 'active' : '' }}">
+                            <i class="bi bi-printer nav-icon"></i><span>Lista em papel</span>
+                        </a>
+
+                        @can('participantes.gerenciar')
+                            <a href="{{ route('participantes.dias') }}"
+                               class="nav-item {{ request()->routeIs('participantes.dias') ? 'active' : '' }}">
+                                <i class="bi bi-calendar-week nav-icon"></i><span>Dias do evento</span>
+                            </a>
+                        @endcan
+                    </details>
+                @endif
+
                 {{-- ── Módulo Livraria ── --}}
                 @php($verLivraria = auth()->user()?->can('ver-livraria')
                                  || auth()->user()?->can('livraria.remessa')

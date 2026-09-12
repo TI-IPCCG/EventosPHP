@@ -1923,3 +1923,26 @@ small.bloco.obs { font-style: italic }
    fique órfão numa linha quando o nome do item quebra. */
 .link-item .bi { opacity: .4; font-size: .8em; transition: opacity .12s }
 .link-item:hover .bi, .link-item:focus-visible .bi { opacity: 1 }
+
+/* ── Módulo participantes ────────────────────────────────────────
+   A portaria reaproveita .venda-busca e .venda-resultados: é a mesma
+   situação de uma mão, em pé, com fila — e o que funcionou na mesa
+   funciona aqui. Só o seletor de dia e o aviso são próprios. */
+.checkin-dia { margin-bottom: 1rem }
+.checkin-dia label {
+  display: block; font-size: .8rem; font-weight: 600;
+  color: var(--muted-fg); margin-bottom: .35rem;
+}
+.checkin-dia select { font-size: 1.05rem; padding: .7rem .8rem }
+
+/* Marcar no dia errado é o engano mais caro da portaria, e o mais fácil
+   de cometer: o aviso precisa gritar, não sussurrar. */
+.checkin-alerta {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .7rem 0 0; padding: .6rem .75rem;
+  background: var(--danger-dim, rgba(176,58,46,.10));
+  border-radius: var(--radius-sm);
+  color: var(--danger, #B03A2E); font-size: .9rem; font-weight: 600;
+}
+.checkin .venda-resultados .res-preco { font-size: 1.4rem; color: var(--primary) }
+.checkin .venda-resultados .res-info strong { display: flex; align-items: center; gap: .4rem }

@@ -51,6 +51,23 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/perfis', 'admin.perfis')
         ->name('perfis')->middleware('can:perfis.gerenciar');
 
+    // ── Módulo Participantes ──
+    // A portaria exige `ver-participantes` (gate composto), e não
+    // `participantes.ver`: o voluntário que só tem `participantes.checkin`
+    // tomaria 403 na própria tela que precisa operar.
+    Route::livewire('/participantes/checkin', 'participantes.checkin')
+        ->name('participantes.checkin')->middleware('can:ver-participantes');
+
+    Route::livewire('/participantes', 'participantes.inscritos')
+        ->name('participantes.inscritos')->middleware('can:ver-participantes');
+
+    Route::livewire('/participantes/dias', 'participantes.dias')
+        ->name('participantes.dias')->middleware('can:participantes.gerenciar');
+
+    // Papel: o plano B para a internet cair na portaria.
+    Route::view('/participantes/lista-presenca', 'participantes.lista-presenca')
+        ->name('participantes.lista')->middleware('can:ver-participantes');
+
     // ── Módulo Livraria ──
     Route::livewire('/livraria/venda', 'livraria.venda')
         ->name('livraria.venda')->middleware('can:livraria.vender');
