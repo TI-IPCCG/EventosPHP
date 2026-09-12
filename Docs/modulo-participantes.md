@@ -1,8 +1,9 @@
 # Módulo 2 — Participantes de Evento (check-in + credencial com QR)
 
-> **Status:** plano aprovado em 10/09/2026, implementação não iniciada.
-> A única parte já entregue é a correção do contexto de congregação
-> (ver "Bug pré-existente" abaixo), que valia por si e foi publicada antes.
+> **Status em 12/09/2026 — etapa 1 EM PRODUÇÃO**, testada ponta a ponta.
+> No ar: check-in (por nome, código, e-mail, telefone, CPF ou QR), walk-in,
+> desfazer, dias do evento, lista de presença imprimível e inscrição à mão.
+> Faltam a **importação** (etapa 2) e **QR + credencial + e-mail** (etapa 3).
 >
 > Documento de decisões, no formato de `arquitetura.md`: cada escolha vem com o
 > custo e a alternativa recusada.
