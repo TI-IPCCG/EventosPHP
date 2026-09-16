@@ -460,12 +460,30 @@
                 <li><strong>Taxas</strong> → a taxa da maquininha, por transação, só onde houve
                     aquela forma de pagamento.</li>
             </ul>
+            <p><strong>E as trocas?</strong> Elas entram sozinhas, sem nada a lançar à mão:</p>
+            <ul>
+                <li>a <strong>receita</strong> passa a valer o item que a pessoa
+                    <em>levou</em>, porque ela sempre somou os itens da venda e não o
+                    valor pago;</li>
+                <li>a <strong>taxa</strong> de uma cobrança adicional entra na conta —
+                    trocar por item mais caro e cobrar a diferença no cartão gera taxa
+                    nova, que a operadora retém igual;</li>
+                <li>na <strong>conferência por forma de pagamento</strong>, a diferença
+                    aparece com sinal: o troco devolvido <strong>abate</strong> o total
+                    daquela forma, que é o que aconteceu com o dinheiro. Sem isso o caixa
+                    não fecharia.</li>
+            </ul>
             <p><strong>Nenhum desses números é armazenado.</strong> Todos são calculados na hora, a
             partir dos exemplares e das vendas — assim não existe total guardado que possa discordar
             dos fatos.</p>
             <div class="tip">💡 Sob consignação, o que <strong>não vendeu volta</strong> e não entra
             no devido. É por isso que o saldo por exemplar precisa estar fiel: ele é a base do acerto
             com cada fornecedor.</div>
+            <div class="tip">⚠️ Numa venda com troca, o <strong>valor pago</strong> e a
+            <strong>soma dos itens</strong> são números diferentes de propósito — e a
+            tela de Vendas mostra os dois. O primeiro é o que o extrato do banco vai
+            mostrar; o segundo é a mercadoria que saiu. A diferença entre eles é
+            exatamente o que entrou ou saiu do caixa na troca.</div>
         </div>
     </details>
 
