@@ -10,8 +10,9 @@
      que exige sessão do operador) — juntar as duas deixaria o endpoint de
      check-in a um auth()->check() de distância. --}}
 @php
+    // $evento vem da rota, já sem o ChurchScope: quem abre esta página não tem
+    // sessão, e carregá-lo daqui devolveria null.
     $qr = app(App\Services\Participantes\QrService::class);
-    $evento = $inscricao->event;
     $dias = App\Models\Participantes\EventDay::where('event_id', $evento->id)->ativos()->get();
 @endphp
 <!DOCTYPE html>

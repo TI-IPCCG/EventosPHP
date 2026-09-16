@@ -21,14 +21,26 @@ Route::livewire('/login', 'auth.login')->name('login');
  | distância de qualquer pessoa com um crachá na mão.
  */
 Route::get('/credencial/{token}', function (string $token) {
-    $inscricao = App\Models\Participantes\Registration::withoutGlobalScopes()
-        ->with('event')
-        ->where('token', $token)
-        ->firstOrFail();
+    $inscricao = App\Models\Participantes\Registration::where('token', $token)->firstOrFail();
 
     abort_if($inscricao->cancelada, 404);
 
-    return view('participantes.credencial', ['inscricao' => $inscricao]);
+    /*
+     | ⚠ withoutGlobalScopes() no EVENTO, e é obrigatório: Event usa
+     | BelongsToChurch, cujo ChurchScope filtra pela congregação da SESSÃO. Aqui
+     | quem abre é o participante, que não tem login nem sessão — o escopo
+     | filtraria por NULL e devolveria evento nenhum, estourando a página com
+     | "property on null".
+     |
+     | Não é furo de isolamento: chegar aqui exige o token de 32 caracteres, que
+     | já identifica uma inscrição específica. A congregação vem dela.
+     */
+    $evento = App\Models\Event::withoutGlobalScopes()->findOrFail($inscricao->event_id);
+
+    return view('participantes.credencial', [
+        'inscricao' => $inscricao,
+        'evento'    => $evento,
+    ]);
 })->name('participantes.credencial');
 
 // Auto-cadastro. Fica FORA do middleware auth de propósito: é a porta de
@@ -98,10 +110,12 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/participantes/dias', 'participantes.dias')
         ->name('participantes.dias')->middleware('can:participantes.gerenciar');
 
-    // Envio das credenciais. Permissão separada de propósito: gasta cota de
-    // SMTP e não tem desfazer.
-    Route::livewire('/participantes/credenciais', 'participantes.credenciais')
-        ->name('participantes.credenciais')->middleware('can:participantes.enviar');
+    // As credenciais viviam numa tela própria e foram absorvidas por Inscritos:
+    // no dia a dia, "quem está inscrito" e "quem recebeu a credencial" são a
+    // mesma pergunta, e separá-las obrigava a conferir duas telas. A rota fica
+    // como redirect para não quebrar link já salvo por ninguém.
+    Route::redirect('/participantes/credenciais', '/participantes')
+        ->name('participantes.credenciais');
 
     // Papel: o plano B para a internet cair na portaria.
     Route::view('/participantes/lista-presenca', 'participantes.lista-presenca')

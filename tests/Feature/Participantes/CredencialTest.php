@@ -117,8 +117,14 @@ class CredencialTest extends TestCase
 
     public function test_a_credencial_e_publica(): void
     {
-        // Quem a abre não tem login: o participante não é usuário do app.
+        // ⚠ A sessão é ESVAZIADA de propósito, e é isso que faz este teste
+        // valer: o participante chega sem login e sem church_id. A versão
+        // anterior deixava a sessão do setUp e passava com a página quebrada em
+        // produção — o ChurchScope do Event devolvia null e a página estourava
+        // justamente para o único público que a usa.
         $i = $this->inscrito('Publico Silva');
+
+        session()->flush();
 
         $this->get(route('participantes.credencial', ['token' => $i->token]))
             ->assertOk()
@@ -127,6 +133,19 @@ class CredencialTest extends TestCase
             ->assertSee('<svg', escape: false);
 
         $this->assertGuest();
+    }
+
+    public function test_a_credencial_mostra_o_evento_e_os_dias_sem_sessao(): void
+    {
+        $i = $this->inscrito('Com Dias');
+        (new \App\Services\Participantes\DayService)->sincronizar($this->evento);
+
+        session()->flush();
+
+        $this->get(route('participantes.credencial', ['token' => $i->token]))
+            ->assertOk()
+            ->assertSee($this->evento->nome)
+            ->assertSee('25/09/2026');
     }
 
     public function test_o_scan_do_qr_exige_operador_logado(): void
@@ -255,7 +274,7 @@ class CredencialTest extends TestCase
 
         $this->assertSame(0, app(EnvioService::class)->pendentes($this->evento));
 
-        Livewire::actingAs($this->coord)->test('participantes.credenciais')
+        Livewire::actingAs($this->coord)->test('participantes.inscritos')
             ->call('reenviar', $i->id);
 
         $this->assertSame(1, app(EnvioService::class)->pendentes($this->evento));
@@ -264,24 +283,33 @@ class CredencialTest extends TestCase
 
     // ── a tela ──────────────────────────────────────────────────────
 
-    public function test_a_tela_renderiza_e_conta_certo(): void
+    public function test_a_tela_de_inscritos_conta_as_credenciais(): void
     {
+        // O envio foi absorvido por Inscritos: no dia a dia "quem está inscrito"
+        // e "quem recebeu credencial" são a mesma pergunta.
         $this->inscrito('Na Fila');
 
+        $this->actingAs($this->coord)->get(route('participantes.inscritos'))
+            ->assertOk()->assertSee('Inscritos');
+
+        $totais = Livewire::actingAs($this->coord)->test('participantes.inscritos')
+            ->instance()->totais;
+
+        $this->assertSame(1, $totais['na_fila']);
+        $this->assertSame(0, $totais['enviadas']);
+    }
+
+    public function test_a_rota_antiga_de_credenciais_redireciona(): void
+    {
         $this->actingAs($this->coord)->get(route('participantes.credenciais'))
-            ->assertOk()->assertSee('Credenciais');
-
-        $numeros = Livewire::actingAs($this->coord)->test('participantes.credenciais')
-            ->instance()->numeros;
-
-        $this->assertSame(1, $numeros['pendentes']);
+            ->assertRedirect('/participantes');
     }
 
     public function test_o_teste_para_si_mesmo_envia(): void
     {
         $this->inscrito();
 
-        Livewire::actingAs($this->coord)->test('participantes.credenciais')
+        Livewire::actingAs($this->coord)->test('participantes.inscritos')
             ->set('emailTeste', 'eu@ipccg.org.br')
             ->call('enviarTeste')
             ->assertHasNoErrors();
@@ -289,11 +317,17 @@ class CredencialTest extends TestCase
         Mail::assertSent(CredencialMail::class);
     }
 
-    public function test_quem_nao_pode_enviar_leva_403(): void
+    public function test_quem_nao_pode_enviar_nao_dispara_o_lote(): void
     {
         // Permissão separada de propósito: gasta cota de SMTP e não tem desfazer.
+        // A Portaria VÊ a lista (precisa, para achar gente), mas não envia.
         $porteiro = $this->pessoaCom(['eventos.ver', 'participantes.ver', 'participantes.checkin']);
+        $this->inscrito();
 
-        $this->actingAs($porteiro)->get(route('participantes.credenciais'))->assertForbidden();
+        $this->actingAs($porteiro)->get(route('participantes.inscritos'))->assertOk();
+
+        Livewire::actingAs($porteiro)->test('participantes.inscritos')
+            ->call('iniciarEnvio')
+            ->assertForbidden();
     }
 }

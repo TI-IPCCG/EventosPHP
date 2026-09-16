@@ -92,7 +92,7 @@
                 @if ($verParticipantes)
                     <details class="nav-group"
                              @if (request()->routeIs('participantes.inscritos', 'participantes.dias',
-                                                     'participantes.lista', 'participantes.credenciais')) open @endif>
+                                                     'participantes.lista')) open @endif>
                         <summary>
                             <i class="bi bi-people-fill nav-icon"></i><span>Participantes</span>
                         </summary>
@@ -106,13 +106,6 @@
                            class="nav-item {{ request()->routeIs('participantes.lista') ? 'active' : '' }}">
                             <i class="bi bi-printer nav-icon"></i><span>Lista em papel</span>
                         </a>
-
-                        @can('participantes.enviar')
-                            <a href="{{ route('participantes.credenciais') }}"
-                               class="nav-item {{ request()->routeIs('participantes.credenciais') ? 'active' : '' }}">
-                                <i class="bi bi-qr-code nav-icon"></i><span>Credenciais</span>
-                            </a>
-                        @endcan
 
                         @can('participantes.gerenciar')
                             <a href="{{ route('participantes.dias') }}"
