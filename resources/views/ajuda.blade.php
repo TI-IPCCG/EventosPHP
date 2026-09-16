@@ -16,24 +16,37 @@
 
     {{-- ── Por onde começar ───────────────────────────────────── --}}
     <div class="help-intro">
-        <strong>🚀 Por onde começar (ordem de montagem)</strong>
+        <strong>🚀 O app tem dois módulos, e eles são independentes</strong>
         <p style="margin:6px 0 0">
-            As telas se encadeiam: cada uma só funciona se a anterior estiver pronta.
-            Para chegar ao <strong>resultado do evento</strong>, monte nesta ordem:
+            Tudo parte do <strong>Evento</strong>. A partir dele, os dois módulos seguem
+            caminhos próprios — dá para usar um sem o outro.
         </p>
+
+        <p style="margin:12px 0 2px"><strong>📚 Livraria</strong> — vender no evento:</p>
         <div class="help-chain">
-            <span class="step">1. Evento</span><span class="arrow">→</span>
-            <span class="step">2. Fornecedores</span><span class="arrow">→</span>
-            <span class="step">3. Categorias</span><span class="arrow">→</span>
-            <span class="step">4. Catálogo</span><span class="arrow">→</span>
-            <span class="step">5. Remessa</span><span class="arrow">→</span>
-            <span class="step">6. Venda</span><span class="arrow">→</span>
-            <span class="step">7. Painel</span>
+            <span class="step">Evento</span><span class="arrow">→</span>
+            <span class="step">Fornecedores</span><span class="arrow">→</span>
+            <span class="step">Categorias</span><span class="arrow">→</span>
+            <span class="step">Catálogo</span><span class="arrow">→</span>
+            <span class="step">Remessa</span><span class="arrow">→</span>
+            <span class="step">Venda</span><span class="arrow">→</span>
+            <span class="step">Painel</span>
         </div>
-        <p style="margin:10px 0 0; font-size:.9rem">
+
+        <p style="margin:12px 0 2px"><strong>🎟️ Participantes</strong> — quem vem ao evento:</p>
+        <div class="help-chain">
+            <span class="step">Evento</span><span class="arrow">→</span>
+            <span class="step">Dias</span><span class="arrow">→</span>
+            <span class="step">Inscritos</span><span class="arrow">→</span>
+            <span class="step">Credenciais</span><span class="arrow">→</span>
+            <span class="step">Check-in</span>
+        </div>
+        <p style="margin:12px 0 0; font-size:.9rem">
             <strong>Fornecedores, Categorias e Catálogo são permanentes</strong> — cadastra uma vez
             e reaproveita em todos os eventos. Só <strong>Remessa</strong> e <strong>Venda</strong>
-            são refeitas a cada evento.
+            são refeitas a cada evento. No módulo de participantes vale o mesmo: as
+            <strong>pessoas</strong> ficam guardadas entre eventos, e o que se refaz é a
+            <strong>inscrição</strong>.
         </p>
     </div>
 
@@ -370,6 +383,124 @@
 
     {{-- ── Acessos ────────────────────────────────────────────── --}}
     <details class="help-item">
+        <summary>🎟️ Participantes — quem vem ao evento</summary>
+        <div class="help-body">
+            <p>O segundo módulo cuida de <strong>quem se inscreve</strong> num evento: a lista,
+            a credencial com QR e a entrada na portaria.</p>
+
+            <div class="tip">💡 <strong>Participante não é usuário do app.</strong> Ele não faz
+            login, não tem senha nem perfil, e não aparece em <em>Pessoas</em>. Ele é inscrito
+            num evento — são coisas diferentes de propósito.</div>
+
+            <p>Na ordem em que se usa:</p>
+            <ul>
+                <li><strong>Dias do evento</strong> — nascem do período do evento ao tocar em
+                    "Gerar do período". Cada dia tem <strong>a sua contagem de presença</strong>,
+                    e é por isso que eles existem como cadastro: dá para nomear ("Sexta —
+                    Abertura"), acrescentar um dia fora do período (retirada de kit na véspera)
+                    e desativar um dia cancelado sem apagar quem já entrou.</li>
+                <li><strong>Inscritos</strong> — a lista, com busca e filtros. É por aqui que se
+                    cadastra alguém à mão e se envia as credenciais.</li>
+                <li><strong>Check-in</strong> — a portaria. Fica fora do grupo no menu, ao lado
+                    de Venda, porque é a tela mais usada durante o evento.</li>
+                <li><strong>Lista em papel</strong> — imprima na véspera. É o plano B.</li>
+            </ul>
+
+            <details class="help-sub">
+                <summary>🎫 A credencial com QR — como chega e como funciona</summary>
+                <div class="help-sub-body">
+                    <p>Em <a href="{{ route('participantes.inscritos') }}">Inscritos</a>, o botão
+                    <strong>Credenciais</strong> abre o envio. Cada pessoa recebe um e-mail com
+                    <strong>três caminhos para a mesma coisa</strong>, porque no dia qualquer um
+                    pode falhar:</p>
+                    <ul>
+                        <li>o <strong>QR</strong>, embutido na mensagem — aparece sem clicar em
+                            "exibir imagens" e funciona <strong>sem internet</strong>, porque já
+                            está no e-mail baixado;</li>
+                        <li>o <strong>código</strong> em letra grande (INS0042), para ditar na
+                            entrada se o QR não ler;</li>
+                        <li>o <strong>link</strong> da credencial, que abre em tela cheia e pode
+                            ser salvo como PDF ou impresso.</li>
+                    </ul>
+                    <div class="tip">⚠️ <strong>Envie um teste para você antes do disparo geral</strong>,
+                    e <strong>confira o spam</strong>. É assim que se descobre um problema de
+                    entrega antes de dezenas de pessoas não receberem.</div>
+                    <p>O envio vai <strong>em blocos</strong> e pode ser pausado. Fechar a página
+                    não perde nada: quem já recebeu não recebe de novo, e iniciar outra vez
+                    continua de onde parou.</p>
+                    <div class="tip">💡 <strong>Quem está com "sem e-mail válido"</strong> não vai
+                    receber. A lista mostra quem são — avise essas pessoas por outro canal, e na
+                    portaria elas entram pelo nome.</div>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>🚪 A portaria — como o check-in acontece</summary>
+                <div class="help-sub-body">
+                    <p>Duas formas, e as duas terminam na mesma tela de confirmação:</p>
+                    <ul>
+                        <li><strong>Escaneando o QR</strong> com a câmera do celular — a câmera
+                            normal do aparelho, sem app nenhum. Você precisa estar
+                            <strong>logado</strong> no sistema para que o código abra o check-in.</li>
+                        <li><strong>Buscando</strong> por nome, código, e-mail, telefone ou CPF.
+                            Uma caixa só: ela entende o que você digitou.</li>
+                    </ul>
+                    <p>A tela de confirmação mostra <strong>quem é</strong> e
+                    <strong>para qual dia</strong> a entrada vai — confira o nome antes de tocar
+                    em confirmar. É o que impede marcar presença de quem apresentou o crachá de
+                    outra pessoa.</p>
+                    <div class="tip">💡 <strong>O mesmo QR serve os dois dias.</strong> O que
+                    define a qual dia a entrada pertence é o <strong>dia de hoje</strong>, que
+                    aparece em destaque na confirmação. Ninguém escolhe o dia na portaria —
+                    justamente para não marcar no dia errado no meio da fila.</div>
+                    <p><strong>Passou o crachá duas vezes?</strong> A tela avisa
+                    <em>"já entrou às 19h12, por Maria"</em> em vez de contar de novo. É assim
+                    que se percebe crachá emprestado.</p>
+                    <p><strong>Apareceu alguém sem inscrição?</strong> Use
+                    <em>Inscrever na hora</em>: dois campos e a pessoa entra já registrada. Sem
+                    isso a portaria anota no papel e o dado nunca chega ao sistema.</p>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>🖨️ Se a internet cair — a lista em papel</summary>
+                <div class="help-sub-body">
+                    <p>O app precisa de internet para funcionar; não há como contornar isso na
+                    portaria. A saída é analógica e tem de estar pronta <strong>antes</strong>:</p>
+                    <ul>
+                        <li>imprima a <strong>Lista em papel</strong> na véspera — ela sai com o
+                            código, o nome e um quadradinho por dia;</li>
+                        <li>marque as entradas à caneta enquanto a rede não volta;</li>
+                        <li>depois lance no app pela tela de check-in.</li>
+                    </ul>
+                    <div class="tip">💡 Leve também um segundo celular como reserva de internet,
+                    de operadora diferente.</div>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>👤 A mesma pessoa em vários eventos</summary>
+                <div class="help-sub-body">
+                    <p>O sistema guarda as pessoas <strong>entre eventos</strong>. Quando alguém
+                    se inscreve de novo com o <strong>mesmo e-mail ou o mesmo CPF</strong>, é
+                    reconhecida — os dados já vêm preenchidos e o histórico fica ligado.</p>
+                    <p>Três detalhes que evitam confusão:</p>
+                    <ul>
+                        <li><strong>Casal que usa o mesmo e-mail</strong> continua sendo duas
+                            pessoas. A credencial de cada um vai para aquele endereço mesmo.</li>
+                        <li><strong>Corrigir um telefone hoje não muda o passado.</strong> A
+                            inscrição guarda o que foi informado naquele evento — a lista de
+                            presença do ano passado continua como era.</li>
+                        <li><strong>"Conferir"</strong> numa inscrição significa que o e-mail e o
+                            CPF apontaram para pessoas diferentes. O sistema não junta ninguém por
+                            conta própria: fica para alguém olhar.</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </details>
+
+    <details class="help-item">
         <summary>🔑 Quem enxerga o quê</summary>
         <div class="help-body">
             <p>Cada tela exige uma permissão, dada pelo <strong>perfil de acesso</strong> da pessoa.
@@ -384,6 +515,11 @@
                 <li><code>livraria.baixar</code> — dar baixa em exemplar sem venda (sorteio,
                     cortesia, doação, perda)</li>
                 <li><code>livraria.fechamento</code> — acerto dos fornecedores, devolução e resultado</li>
+                <li><code>participantes.ver</code> — ver os inscritos e a presença</li>
+                <li><code>participantes.checkin</code> — registrar entrada na portaria</li>
+                <li><code>participantes.gerenciar</code> — inscritos, dias e configurações</li>
+                <li><code>participantes.enviar</code> — disparar as credenciais por e-mail</li>
+                <li><code>participantes.importar</code> — importar a planilha de inscrições</li>
                 <li><code>usuarios.ver</code> / <code>usuarios.gerenciar</code> /
                     <code>perfis.gerenciar</code> — pessoas e perfis de acesso</li>
             </ul>
@@ -409,6 +545,14 @@
                 </div>
             </details>
 
+            <div class="tip">💡 Existe um perfil <strong>Portaria</strong> pronto:
+            <code>eventos.ver</code> + <code>participantes.ver</code> +
+            <code>participantes.checkin</code>. É o voluntário que fica na porta marcando
+            presença — e que <strong>não deve ver o financeiro</strong>, porque o Painel mostra
+            receita, custos e o quanto se deve aos fornecedores.</div>
+            <div class="tip">⚠️ <code>participantes.enviar</code> é separada de propósito:
+            disparar credenciais gasta a cota de e-mail da hospedagem e
+            <strong>não tem desfazer</strong>.</div>
             <div class="tip">💡 Para o voluntário de mesa, <code>livraria.vender</code> costuma
             bastar. Ele registra venda sem poder mexer em preço, custo ou remessa — que é o recorte
             certo para quem está atendendo a fila.</div>
@@ -512,6 +656,10 @@
                     ainda não.</li>
                 <li><strong>Etiquetas para impressão</strong> — os códigos já são gerados na Remessa
                     (<code>ECC001</code>…), mas a folha para imprimir ainda não sai daqui.</li>
+                <li><strong>Importar a planilha de inscrições</strong> — por enquanto os
+                    participantes entram um a um pela tela de Inscritos.</li>
+                <li><strong>Formulário de inscrição no app</strong> — com perguntas montadas por
+                    você, como os campos do catálogo. Hoje a inscrição vem de fora.</li>
             </ul>
         </div>
     </details>
