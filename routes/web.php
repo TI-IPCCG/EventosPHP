@@ -12,6 +12,25 @@ Route::get('/', fn () => redirect()->route('login'));
 
 Route::livewire('/login', 'auth.login')->name('login');
 
+/*
+ | A CREDENCIAL do participante — pública, e fora do `auth` de propósito: quem
+ | a abre não tem login, e o token no endereço já é o segredo.
+ |
+ | ⚠ É uma rota SEPARADA de /p/{token} (o check-in). Servir as duas no mesmo
+ | endereço deixaria o endpoint que REGISTRA presença a um auth()->check() de
+ | distância de qualquer pessoa com um crachá na mão.
+ */
+Route::get('/credencial/{token}', function (string $token) {
+    $inscricao = App\Models\Participantes\Registration::withoutGlobalScopes()
+        ->with('event')
+        ->where('token', $token)
+        ->firstOrFail();
+
+    abort_if($inscricao->cancelada, 404);
+
+    return view('participantes.credencial', ['inscricao' => $inscricao]);
+})->name('participantes.credencial');
+
 // Auto-cadastro. Fica FORA do middleware auth de propósito: é a porta de
 // entrada de quem ainda não tem conta. O vínculo nasce pendente — ver o
 // componente. Quem libera é o responsável, hoje pelo banco.
@@ -51,6 +70,21 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/perfis', 'admin.perfis')
         ->name('perfis')->middleware('can:perfis.gerenciar');
 
+    /*
+     | O destino do QR. Fica DENTRO do `auth` com can:participantes.checkin, e é
+     | daí que vem a anti-falsificação: o token não é credencial, é chave de
+     | busca — a autorização vem da sessão do OPERADOR.
+     |
+     | Quem escaneia o próprio QR cai no login, não num check-in. E um QR
+     | forjado só pode apontar para uma inscrição que já existe; não cria nada.
+     |
+     | Redireciona para a MESMA tela de check-in, com a busca preenchida: o
+     | operador vê sempre a mesma coisa, venha do scan, da digitação ou do nome.
+     */
+    Route::get('/p/{token}', fn (string $token) => redirect()->route(
+        'participantes.checkin', ['busca' => $token],
+    ))->name('participantes.scan')->middleware('can:participantes.checkin');
+
     // ── Módulo Participantes ──
     // A portaria exige `ver-participantes` (gate composto), e não
     // `participantes.ver`: o voluntário que só tem `participantes.checkin`
@@ -63,6 +97,11 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/participantes/dias', 'participantes.dias')
         ->name('participantes.dias')->middleware('can:participantes.gerenciar');
+
+    // Envio das credenciais. Permissão separada de propósito: gasta cota de
+    // SMTP e não tem desfazer.
+    Route::livewire('/participantes/credenciais', 'participantes.credenciais')
+        ->name('participantes.credenciais')->middleware('can:participantes.enviar');
 
     // Papel: o plano B para a internet cair na portaria.
     Route::view('/participantes/lista-presenca', 'participantes.lista-presenca')

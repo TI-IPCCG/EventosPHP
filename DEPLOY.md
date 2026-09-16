@@ -54,6 +54,11 @@ Empurrar os **6.459 arquivos** do `vendor/` de produção numa única sessão FT
 servidor derrubar a conexão ("Server sent FIN packet unexpectedly"). Ele está
 no `exclude` e vai à mão, só quando o `composer.lock` muda (raro):
 
+⚠️ **O `vendor/` mudou em 16/09/2026**: o módulo de participantes acrescentou
+`chillerlan/php-qrcode` (gera o QR da credencial). Quem já tem o app publicado
+precisa **subir o zip de novo** — `git push` não leva o vendor, então sem esse
+passo a tela de credenciais estoura com "class not found".
+
 ```bash
 # 1) gere o vendor de PRODUÇÃO (sem dev, autoload otimizado):
 composer install --no-dev --optimize-autoloader
