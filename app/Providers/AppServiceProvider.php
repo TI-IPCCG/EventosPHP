@@ -19,8 +19,12 @@ class AppServiceProvider extends ServiceProvider
         /*
          | O app não tem build de CSS, então as views de paginação que o Laravel
          | traz (tailwind, bootstrap) referenciam classes que não existem aqui.
-         | A view própria usa os tokens do Emerald Archive e vale para o app
-         | inteiro: qualquer tela chama {{ $lista->links() }} e sai padronizada.
+         | A view própria usa os tokens do Emerald Archive.
+         |
+         | ⚠ Isto NÃO alcança as telas Livewire: a cada render o Livewire chama
+         | Paginator::defaultView($this->paginationView()) e sobrescreve o que
+         | está aqui pelo tema dele. Tela Livewire que pagina tem de usar o
+         | trait App\Support\Paginacao — este default cobre só o resto.
          */
         Paginator::defaultView('vendor.pagination.emerald');
         Paginator::defaultSimpleView('vendor.pagination.emerald');

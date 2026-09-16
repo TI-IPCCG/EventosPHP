@@ -10,8 +10,8 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use App\Support\Paginacao;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 /**
  * A MESA. É a tela que decide se o app presta.
@@ -31,7 +31,7 @@ new
 #[Layout('components.layouts.admin')]
 #[Title('Venda — Eventos IPCCG')]
 class extends Component {
-    use WithPagination;
+    use Paginacao;
 
     /**
      * Ordenações oferecidas. O mapa é fechado de propósito: `ordem` vem da URL,

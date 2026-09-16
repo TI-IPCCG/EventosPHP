@@ -332,6 +332,27 @@ class TelaDeVendaTest extends TestCase
     }
 
     /**
+     * A paginação tem de sair com a view DO APP.
+     *
+     * Registrar Paginator::defaultView() não basta: o Livewire sobrescreve o
+     * default a cada render pelo tema dele (livewire::tailwind). Sem Tailwind
+     * no projeto, aquilo renderiza o SVG da seta em tamanho natural — meia
+     * tela de chevron — e mostra a chave `pagination.previous` crua, porque
+     * não há tradução pt-BR publicada. Foi exatamente o que apareceu em
+     * produção.
+     */
+    public function test_a_paginacao_usa_a_view_do_app(): void
+    {
+        $this->estocarPrecosVariados(6);
+
+        $this->tela()->set('porPagina', 5)
+            ->assertSee('class="paginacao"', escape: false)
+            ->assertSee('bi-chevron-right', escape: false)
+            ->assertDontSee('pagination.previous')
+            ->assertDontSee('pagination.next');
+    }
+
+    /**
      * Ordem vem da URL e vai para um ORDER BY. O mapa é fechado: valor
      * desconhecido cai no padrão em vez de chegar perto do SQL.
      */

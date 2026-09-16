@@ -1,23 +1,32 @@
 {{--
     Paginação do Emerald Archive.
 
-    O projeto não tem build de CSS, então as views que o Laravel publica
-    (tailwind, bootstrap) não servem: elas dependem de classes utilitárias
-    que não existem aqui. Esta é a view padrão do app, registrada em
-    AppServiceProvider — `{{ $lista->links() }}` funciona em qualquer tela.
+    ── POR QUE NÃO É A VIEW QUE O LARAVEL PUBLICA ────────────────────────
+    As views que vêm de fábrica (tailwind, bootstrap) dependem de classes
+    utilitárias que este projeto não tem — ele não tem build de CSS. Sem
+    elas o SVG da seta renderiza no tamanho natural e ocupa meia tela.
 
-    `onEachSide(1)` mantém a barra estreita o bastante para caber em 390px
-    sem quebrar, que é a largura da mesa.
+    ── COMO ELA É ESCOLHIDA ──────────────────────────────────────────────
+    Nas telas Livewire, pelo trait App\Support\Paginacao — e só por ele:
+    o Livewire sobrescreve o Paginator::defaultView() do app a cada render.
+    Fora do Livewire, pelo default registrado no AppServiceProvider.
+
+    `getPageName()` vai em todas as chamadas porque uma tela pode ter dois
+    paginadores; sem ele, mexer num moveria o outro.
+
+    onEachSide(1) mantém a barra estreita o bastante para caber em 390px,
+    que é a largura da mesa.
 --}}
 @if ($paginator->hasPages())
     <nav class="paginacao" role="navigation" aria-label="Paginação">
         @if ($paginator->onFirstPage())
-            <span class="pag-item desabilitado" aria-disabled="true">
+            <span class="pag-item desabilitado" aria-disabled="true" aria-label="Página anterior">
                 <i class="bi bi-chevron-left"></i>
             </span>
         @else
-            <button type="button" class="pag-item" wire:click="previousPage" rel="prev"
-                    aria-label="Página anterior">
+            <button type="button" class="pag-item" aria-label="Página anterior"
+                    wire:click="previousPage('{{ $paginator->getPageName() }}')"
+                    wire:loading.attr="disabled">
                 <i class="bi bi-chevron-left"></i>
             </button>
         @endif
@@ -32,7 +41,9 @@
                     @if ($page == $paginator->currentPage())
                         <span class="pag-item atual" aria-current="page">{{ $page }}</span>
                     @else
-                        <button type="button" class="pag-item" wire:click="gotoPage({{ $page }})">
+                        <button type="button" class="pag-item" aria-label="Ir para a página {{ $page }}"
+                                wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')"
+                                wire:loading.attr="disabled">
                             {{ $page }}
                         </button>
                     @endif
@@ -41,12 +52,13 @@
         @endforeach
 
         @if ($paginator->hasMorePages())
-            <button type="button" class="pag-item" wire:click="nextPage" rel="next"
-                    aria-label="Próxima página">
+            <button type="button" class="pag-item" aria-label="Próxima página"
+                    wire:click="nextPage('{{ $paginator->getPageName() }}')"
+                    wire:loading.attr="disabled">
                 <i class="bi bi-chevron-right"></i>
             </button>
         @else
-            <span class="pag-item desabilitado" aria-disabled="true">
+            <span class="pag-item desabilitado" aria-disabled="true" aria-label="Próxima página">
                 <i class="bi bi-chevron-right"></i>
             </span>
         @endif

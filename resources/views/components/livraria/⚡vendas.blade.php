@@ -11,8 +11,8 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use App\Support\Paginacao;
 use Livewire\Component;
-use Livewire\WithPagination;
 
 /**
  * AS VENDAS REGISTRADAS — e o conserto delas.
@@ -37,7 +37,7 @@ new
 #[Layout('components.layouts.admin')]
 #[Title('Vendas — Eventos IPCCG')]
 class extends Component {
-    use WithPagination;
+    use Paginacao;
 
     private const ORDENS = [
         'recentes' => 'Mais recentes',
