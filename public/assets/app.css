@@ -2000,3 +2000,16 @@ small.bloco.obs { font-style: italic }
   border-radius: var(--radius); text-align: center; text-decoration: none;
 }
 .conf-voltar { font-size: .9rem }
+
+/* Quando o dia escolhido não é hoje, o bloco inteiro muda de cor: marcar
+   presença no dia errado é o engano mais caro da portaria. */
+.conf-dia-alerta {
+  background: var(--danger-dim, rgba(176,58,46,.10));
+  border-left-color: var(--danger, #B03A2E);
+}
+.conf-dia-alerta .conf-dia-nome { color: var(--danger, #B03A2E) }
+.conf-dia-aviso {
+  display: flex; align-items: center; gap: .4rem; margin: .5rem 0 0;
+  font-size: .85rem; font-weight: 600; color: var(--danger, #B03A2E);
+}
+.conf-dia-troca { margin-top: .6rem; font-size: .9rem; max-width: 260px }

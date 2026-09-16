@@ -201,8 +201,12 @@ class ConfirmacaoTest extends TestCase
             ->assertDontSee('wire:click="confirmar"', escape: false);
     }
 
-    public function test_quando_hoje_nao_e_dia_de_evento_avisa(): void
+    public function test_quando_o_dia_nao_e_hoje_avisa_em_vermelho_mas_deixa_lancar(): void
     {
+        // O evento ainda não começou (ou já passou). Bloquear aqui impediria
+        // testar na véspera e lançar o que ficou anotado no papel — então a
+        // tela AVISA em vez de travar, e o aviso é gritante porque marcar no
+        // dia errado é o engano mais caro da portaria.
         $futuro = Event::create(['church_id' => 1, 'nome' => 'Ano que vem '.uniqid(),
             'inicio' => Church::agora(1)->addYear()->toDateString(), 'status' => 'planejamento']);
         (new DayService)->sincronizar($futuro);
@@ -215,8 +219,45 @@ class ConfirmacaoTest extends TestCase
         $this->actingAs($this->porteiro)
             ->get(route('participantes.confirmar', ['token' => $i->token]))
             ->assertOk()
-            ->assertSee('Hoje não é dia de evento')
-            ->assertDontSee('wire:click="confirmar"', escape: false);
+            ->assertSee('NÃO é hoje')
+            ->assertSee('conf-dia-alerta', escape: false)
+            ->assertSee('wire:click="confirmar"', escape: false);
+    }
+
+    public function test_lancar_em_dia_que_nao_e_hoje_marca_o_canal_retroativo(): void
+    {
+        // Distinguir o que foi lido na hora do que foi digitado depois responde
+        // "quantas entradas foram lançadas à mão?", que é pergunta real quando
+        // o leitor falha no meio do evento.
+        $i = $this->inscrito();
+        $amanha = EventDay::where('event_id', $this->evento->id)
+            ->whereDate('data', Church::agora(1)->addDay()->toDateString())->first();
+
+        Livewire::actingAs($this->porteiro)
+            ->test('participantes.confirmar', ['token' => $i->token])
+            ->set('dia_id', $amanha->id)
+            ->call('confirmar')
+            ->assertSet('registrado', true);
+
+        $this->assertSame('retroativo',
+            Checkin::where('registration_id', $i->id)->where('event_day_id', $amanha->id)->value('canal'));
+    }
+
+    public function test_evento_sem_dias_gera_os_dias_em_vez_de_travar(): void
+    {
+        // A portaria não pode parar porque ninguém lembrou de cadastrar os dias
+        // antes. Abrir a tela semeia o que falta, a partir do período do evento.
+        $i = $this->inscrito();
+        EventDay::where('event_id', $this->evento->id)->delete();
+
+        $this->actingAs($this->porteiro)
+            ->get(route('participantes.confirmar', ['token' => $i->token]))
+            ->assertOk()
+            ->assertSee('Entrada para')
+            ->assertSee('wire:click="confirmar"', escape: false);
+
+        $this->assertSame(2, EventDay::where('event_id', $this->evento->id)->count(),
+            'os dois dias do evento deveriam ter sido recriados');
     }
 
     public function test_o_qr_leva_direto_para_a_confirmacao(): void

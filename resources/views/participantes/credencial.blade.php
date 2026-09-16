@@ -43,13 +43,13 @@
         .nome { font-size: 20px; font-weight: bold; margin: 0 0 2px; }
         .evento { color: var(--fraco); font-size: 13px; margin: 0 0 16px; }
 
-        /* ⚠ PRETO NO BRANCO, e não a cor da marca.
-           QR é código de barras, não enfeite: leitor de celular decide pelo
-           CONTRASTE, e verde escuro sobre branco derruba a taxa de leitura —
-           testado, e não lia. Estética aqui custa gente parada na fila. */
-        .qr { width: 220px; height: 220px; margin: 0 auto; display: block; }
-        .qr rect { fill: #FFFFFF; }
-        .qr path { fill: #000000; }
+        /* ⚠ NÃO pinte o QR por aqui.
+           As cores vêm embutidas no próprio SVG (preto nos módulos escuros,
+           branco nos claros). Uma regra genérica como `.qr path { fill }` pinta
+           os dois iguais e deixa o código preto sobre preto — ilegível. Já
+           aconteceu; o CSS aqui cuida só de tamanho. */
+        .qr { width: 220px; height: 220px; margin: 0 auto; display: block;
+              background: #FFFFFF; }
 
         .codigo {
             font-family: monospace; font-size: 26px; font-weight: bold;

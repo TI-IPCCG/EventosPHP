@@ -145,8 +145,12 @@ class CredencialTest extends TestCase
         $html = $this->get(route('participantes.credencial', ['token' => $i->token]))
             ->assertOk()->getContent();
 
-        $this->assertStringContainsString('.qr path { fill: #000000; }', $html);
-        $this->assertStringNotContainsString('.qr path { fill: var(--primary); }', $html);
+        // As cores vêm EMBUTIDAS no SVG, não do CSS: assim nenhum ajuste de
+        // estilo posterior consegue pintar escuro e claro da mesma cor e deixar
+        // o código ilegível — que foi o que aconteceu quando elas moravam no CSS.
+        $this->assertMatchesRegularExpression('/class="[^"]*\bdark\b[^"]*" fill="#000"/', $html);
+        $this->assertMatchesRegularExpression('/class="[^"]*\blight\b[^"]*" fill="#fff"/', $html);
+        $this->assertStringNotContainsString('fill: var(--primary)', $html);
     }
 
     public function test_a_credencial_mostra_se_a_pessoa_ja_entrou(): void

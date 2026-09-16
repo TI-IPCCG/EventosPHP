@@ -45,7 +45,19 @@ class QrService
         return route('participantes.scan', ['token' => $inscricao->token]);
     }
 
-    /** SVG inline para a credencial. Não depende de extensão nenhuma. */
+    /**
+     * SVG inline para a credencial. Não depende de extensão nenhuma.
+     *
+     * ⚠ As cores vão EMBUTIDAS no próprio SVG (svgUseFillAttributes), e não por
+     * CSS. O gerador emite um path para os módulos escuros e outro para os
+     * claros; com as cores no CSS, uma regra genérica como `.qr path { fill }`
+     * pinta os dois iguais e o código sai preto sobre preto — ilegível, e foi
+     * exatamente o que aconteceu. Com o fill no elemento, nenhum ajuste de
+     * estilo posterior consegue quebrar a leitura.
+     *
+     * Preto no branco, e não a cor da marca: o leitor decide pelo CONTRASTE, e
+     * aqui estética custa gente parada na fila.
+     */
     public function svg(Registration $inscricao): string
     {
         return (new QRCode(new QROptions([
@@ -53,7 +65,10 @@ class QrService
             'eccLevel'             => self::ECC,
             'outputBase64'         => false,
             'quietzoneSize'        => 2,
-            'svgUseFillAttributes' => false,
+            'svgUseFillAttributes' => true,
+            'drawLightModules'     => true,
+            'markupDark'           => '#000000',
+            'markupLight'          => '#ffffff',
             'cssClass'             => 'qr',
         ])))->render($this->url($inscricao));
     }

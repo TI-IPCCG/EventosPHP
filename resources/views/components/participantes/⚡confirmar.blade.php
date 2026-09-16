@@ -9,6 +9,7 @@ use App\Services\Participantes\DayService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -34,6 +35,15 @@ new
 class extends Component {
     public string $token = '';
 
+    /**
+     * O dia a registrar. Vazio = hoje, que é o caso da portaria durante o
+     * evento. Vem preenchido quando a pessoa chegou pela busca tendo escolhido
+     * outro dia — e é o que permite lançar entrada fora do dia (o dia seguinte
+     * ainda não chegou, alguém ficou no papel, ou você está testando na véspera).
+     */
+    #[Url(except: null)]
+    public ?int $dia_id = null;
+
     /** Vira true depois de registrar, para a tela virar confirmação. */
     public bool $registrado = false;
     public ?string $horaRegistrada = null;
@@ -47,6 +57,12 @@ class extends Component {
         if ($this->evento) {
             $dias->garantir($this->evento);
         }
+
+        // Hoje é o padrão. Se hoje não é dia de evento, cai no primeiro dia
+        // ativo — a tela avisa em vermelho que não é hoje, e quem está na porta
+        // vê isso antes de confirmar.
+        $this->dia_id ??= EventDay::deHoje($this->evento?->id ?? 0)?->id
+            ?? EventDay::where('event_id', $this->evento?->id)->ativos()->value('id');
     }
 
     #[Computed]
@@ -67,23 +83,45 @@ class extends Component {
             ->first();
     }
 
-    /** O dia de hoje NESTE evento, pelo fuso da congregação. */
+    /** Os dias do evento, para trocar quando não for hoje. */
     #[Computed]
-    public function hoje(): ?EventDay
+    public function dias()
     {
-        return $this->evento ? EventDay::deHoje($this->evento->id) : null;
+        return $this->evento
+            ? EventDay::where('event_id', $this->evento->id)->ativos()->get()
+            : collect();
+    }
+
+    /** O dia que será registrado. */
+    #[Computed]
+    public function dia(): ?EventDay
+    {
+        return $this->dias->firstWhere('id', $this->dia_id);
+    }
+
+    /**
+     * O dia escolhido é mesmo hoje?
+     *
+     * Quando não é, a tela avisa em vermelho: marcar presença no dia errado é o
+     * engano mais caro da portaria e o mais fácil de cometer.
+     */
+    #[Computed]
+    public function ehHoje(): bool
+    {
+        return $this->dia && $this->evento
+            && $this->dia->data->isSameDay($this->evento->agora());
     }
 
     /** A entrada que já existe hoje, se existir. */
     #[Computed]
     public function jaEntrou(): ?Checkin
     {
-        if (! $this->inscricao || ! $this->hoje) {
+        if (! $this->inscricao || ! $this->dia) {
             return null;
         }
 
         return Checkin::where('registration_id', $this->inscricao->id)
-            ->where('event_day_id', $this->hoje->id)
+            ->where('event_day_id', $this->dia->id)
             ->whereNull('cancelado_em')
             ->with('operador')
             ->first();
@@ -99,7 +137,7 @@ class extends Component {
 
         return Checkin::where('registration_id', $this->inscricao->id)
             ->whereNull('cancelado_em')
-            ->when($this->hoje, fn ($q) => $q->where('event_day_id', '!=', $this->hoje->id))
+            ->when($this->dia, fn ($q) => $q->where('event_day_id', '!=', $this->dia->id))
             ->with('day')
             ->get();
     }
@@ -108,12 +146,12 @@ class extends Component {
     {
         abort_unless(auth()->user()->can('participantes.checkin'), 403);
 
-        if (! $this->inscricao || ! $this->hoje) {
+        if (! $this->inscricao || ! $this->dia) {
             return;
         }
 
         try {
-            $checkin = $checkins->registrar($this->inscricao, $this->hoje, 'qr', auth()->id());
+            $checkin = $checkins->registrar($this->inscricao, $this->dia, $this->ehHoje ? 'qr' : 'retroativo', auth()->id());
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', tipo: 'aviso', titulo: $this->inscricao->nome,
                 mensagem: $e->getMessage());
@@ -148,16 +186,14 @@ class extends Component {
             </p>
         </div>
 
-    @elseif (! $this->hoje)
-        {{-- O evento existe mas hoje não é dia dele. --}}
+    @elseif (! $this->dia)
+        {{-- O evento não tem dia nenhum cadastrado. --}}
         <div class="empty-state">
             <i class="bi bi-calendar-x"></i>
-            <h2>Hoje não é dia de evento</h2>
+            <h2>Este evento não tem dias</h2>
             <p>
-                {{ $this->evento->nome }} não tem programação para hoje
-                ({{ $this->evento->agora()->format('d/m/Y') }}).
-                Para lançar entrada de outro dia, use o
-                <a href="{{ route('participantes.checkin') }}">check-in</a>.
+                Cadastre em <a href="{{ route('participantes.dias') }}">Dias do evento</a>
+                antes de registrar entradas.
             </p>
         </div>
 
@@ -197,10 +233,36 @@ class extends Component {
         </section>
 
         {{-- ── o dia: grande, porque é o que decide a qual dia a entrada pertence ── --}}
-        <section class="conf-dia">
+        <section class="conf-dia {{ $this->ehHoje ? '' : 'conf-dia-alerta' }}">
             <span class="conf-dia-rotulo">Entrada para</span>
-            <strong class="conf-dia-nome">{{ $this->hoje->rotulo() }}</strong>
-            <span class="conf-dia-data">{{ $this->hoje->data->format('d/m/Y') }} · hoje</span>
+            <strong class="conf-dia-nome">{{ $this->dia->rotulo() }}</strong>
+            <span class="conf-dia-data">
+                {{ $this->dia->data->format('d/m/Y') }}
+                @if ($this->ehHoje)
+                    · hoje
+                @else
+                    · <strong>NÃO é hoje</strong>
+                @endif
+            </span>
+
+            @unless ($this->ehHoje)
+                <p class="conf-dia-aviso">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    Hoje é {{ $this->evento->agora()->format('d/m/Y') }}. Confira antes de
+                    confirmar — a entrada vai para o dia acima.
+                </p>
+            @endunless
+
+            {{-- Trocar o dia fica aqui, discreto: durante o evento ninguém mexe,
+                 e fora dele é o que permite lançar o que ficou no papel. --}}
+            @if ($this->dias->count() > 1 && ! $registrado)
+                <select wire:model.live="dia_id" class="conf-dia-troca"
+                        aria-label="Trocar o dia da entrada">
+                    @foreach ($this->dias as $d)
+                        <option value="{{ $d->id }}">{{ $d->rotulo() }}</option>
+                    @endforeach
+                </select>
+            @endif
         </section>
 
         {{-- ── a ação ── --}}
