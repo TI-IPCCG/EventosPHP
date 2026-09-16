@@ -175,14 +175,27 @@ class EnvioService
             ->orderBy('id');
     }
 
-    /** Reenvio individual: zera o estado e deixa a linha voltar para a fila. */
-    public function reabrir(Registration $inscricao): void
+    /**
+     * Manda a credencial de UMA pessoa, agora.
+     *
+     * Existe separado do lote porque a necessidade é outra: alguém trocou de
+     * e-mail, chegou atrasado na lista, ou pediu de novo no dia. Pôr essa
+     * pessoa na fila e esperar o lote seria pedir que o operador rode uma
+     * campanha inteira para atender um caso.
+     *
+     * Não passa pela reserva: é ação de uma pessoa clicando, não há corrida.
+     *
+     * @return bool false quando o envio falhou — o motivo fica em qr_erro
+     */
+    public function enviarIndividual(Registration $inscricao): bool
     {
+        $evento = $inscricao->event;
+
         $inscricao->update([
-            'qr_enviado_em'   => null,
-            'qr_envios'       => 0,
+            'qr_envios'       => $inscricao->qr_envios + 1,
             'qr_reservado_em' => null,
-            'qr_erro'         => null,
         ]);
+
+        return $this->enviarUma($inscricao, $evento);
     }
 }

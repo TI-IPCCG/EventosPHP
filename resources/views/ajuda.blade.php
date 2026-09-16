@@ -428,6 +428,11 @@
                     <p>O envio vai <strong>em blocos</strong> e pode ser pausado. Fechar a página
                     não perde nada: quem já recebeu não recebe de novo, e iniciar outra vez
                     continua de onde parou.</p>
+                    <p><strong>Para mandar só para uma pessoa</strong>, não é preciso disparar o
+                    lote: cada linha da lista tem o botão <strong>Enviar credencial</strong>
+                    (ou <strong>Reenviar credencial</strong>, para quem já recebeu). O e-mail sai
+                    na hora, só para ela — é o caminho para quem corrigiu o endereço, entrou na
+                    lista depois do disparo, ou simplesmente pediu de novo.</p>
                     <div class="tip">💡 <strong>Quem está com "sem e-mail válido"</strong> não vai
                     receber. A lista mostra quem são — avise essas pessoas por outro canal, e na
                     portaria elas entram pelo nome.</div>

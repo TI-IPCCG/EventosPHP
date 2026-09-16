@@ -319,18 +319,43 @@ class CredencialTest extends TestCase
         $this->assertNotNull($i->fresh()->qr_reservado_em, 'a reserva deveria segurar a próxima tentativa');
     }
 
-    public function test_reenviar_devolve_a_pessoa_para_a_fila(): void
+    public function test_enviar_individual_sai_na_hora_sem_passar_pela_fila(): void
+    {
+        // O botão da linha atende um caso de uma pessoa só ("trocou de e-mail",
+        // "chegou atrasada"). Devolver para a fila obrigaria a rodar o lote
+        // inteiro para atender uma pessoa — por isso o e-mail sai aqui mesmo.
+        $i = $this->inscrito();
+
+        Livewire::actingAs($this->coord)->test('participantes.inscritos')
+            ->call('enviarAgora', $i->id);
+
+        Mail::assertSent(CredencialMail::class, 1);
+        $this->assertNotNull($i->fresh()->qr_enviado_em);
+        $this->assertSame(0, app(EnvioService::class)->pendentes($this->evento), 'não devia sobrar na fila');
+    }
+
+    public function test_enviar_individual_reenvia_para_quem_ja_recebeu(): void
     {
         $i = $this->inscrito();
         app(EnvioService::class)->enviarLote($this->evento);
 
-        $this->assertSame(0, app(EnvioService::class)->pendentes($this->evento));
-
         Livewire::actingAs($this->coord)->test('participantes.inscritos')
-            ->call('reenviar', $i->id);
+            ->call('enviarAgora', $i->id);
 
-        $this->assertSame(1, app(EnvioService::class)->pendentes($this->evento));
-        $this->assertNull($i->fresh()->qr_enviado_em);
+        Mail::assertSent(CredencialMail::class, 2);
+        $this->assertSame(2, (int) $i->fresh()->qr_envios);
+    }
+
+    public function test_enviar_individual_exige_permissao(): void
+    {
+        $semEnviar = $this->pessoaCom(['eventos.ver', 'participantes.ver']);
+        $i = $this->inscrito();
+
+        Livewire::actingAs($semEnviar)->test('participantes.inscritos')
+            ->call('enviarAgora', $i->id)
+            ->assertForbidden();
+
+        Mail::assertNothingSent();
     }
 
     // ── a tela ──────────────────────────────────────────────────────

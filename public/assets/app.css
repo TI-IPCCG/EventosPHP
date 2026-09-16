@@ -1702,7 +1702,15 @@ button.secondary.is-busy::after, .btn-ghost.is-busy::after, .btn-danger.is-busy:
 .lista-cards { display: grid; gap: .75rem }
 .lista-cards .card { display: flex; align-items: center; justify-content: space-between; gap: 1rem }
 .lista-cards .card.ativo { border-color: var(--primary) }
-.card-acoes { display: flex; align-items: center; gap: .6rem }
+/* Ações de lista vão SEMPRE na extremidade direita.
+   margin-left:auto em vez de justify-content:space-between na linha: funciona
+   igual quando há um filho só, e não muda o alinhamento do conteúdo.
+   flex-shrink:0 impede que os botões se espremam quando o nome é longo — quem
+   cede espaço é o texto, que trunca. */
+.card-acoes {
+  display: flex; align-items: center; gap: .6rem;
+  margin-left: auto; flex-shrink: 0;
+}
 small.bloco { display: block; color: var(--muted-fg); font-size: .78rem }
 td.num, th.num { text-align: right; white-space: nowrap }
 td.num.critico { color: var(--danger); font-weight: 600 }
@@ -1777,11 +1785,24 @@ small.opcional {
 
 /* Linha de registro: usada em fornecedores, catálogo, remessa e custos. */
 .linha-registro {
-  display: flex; align-items: center; gap: .75rem;
+  display: flex; align-items: center; gap: 1rem;
   padding: .7rem 0; border-bottom: 1px solid var(--border);
 }
 .linha-registro:last-child { border-bottom: 0 }
 .linha-registro.inativo { opacity: .55 }
+
+/* O bloco de conteúdo toma o espaço que sobra e TRUNCA em vez de empurrar os
+   botões para fora — min-width:0 é o que permite o text-overflow funcionar
+   dentro de um flex item. */
+.linha-registro > :first-child { flex: 1 1 auto; min-width: 0 }
+
+/* No celular a linha empilha: os botões vão para baixo, ainda à direita, em
+   vez de espremer o nome até virar duas letras. */
+@media (max-width: 560px) {
+  .linha-registro { flex-wrap: wrap; gap: .5rem }
+  .linha-registro > :first-child { flex: 1 1 100% }
+  .card-acoes { width: 100%; justify-content: flex-end }
+}
 
 .mini-thumb {
   width: 40px; height: 40px; flex: 0 0 40px;

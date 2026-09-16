@@ -189,16 +189,37 @@ class extends Component {
             mensagem: 'Confira a caixa de '.$this->emailTeste.' — e o spam.');
     }
 
-    public function reenviar(int $id, EnvioService $envio): void
+    /**
+     * Manda a credencial de UMA pessoa, na hora.
+     *
+     * Deliberadamente NÃO devolve a pessoa para a fila do lote: quem clica aqui
+     * quer que aquele e-mail saia agora — o caso é "a Maria trocou de endereço"
+     * ou "chegou atrasada na lista", e não faz sentido rodar uma campanha
+     * inteira para atender uma pessoa. Por isso o retorno é imediato e o toast
+     * diz o que aconteceu, em vez de prometer um envio futuro.
+     */
+    public function enviarAgora(int $id, EnvioService $envio): void
     {
         abort_unless(auth()->user()->can('participantes.enviar'), 403);
 
         $inscricao = Registration::where('event_id', $this->evento->id)->findOrFail($id);
-        $envio->reabrir($inscricao);
+
+        if (! $inscricao->email_valido || ! $inscricao->email) {
+            $this->dispatch('toast', tipo: 'aviso',
+                mensagem: $inscricao->nome.' não tem e-mail válido cadastrado.');
+
+            return;
+        }
+
+        $ok = $envio->enviarIndividual($inscricao);
 
         unset($this->totais, $this->inscritos);
-        $this->dispatch('toast', tipo: 'info',
-            mensagem: $inscricao->nome.' volta para a fila de envio.');
+
+        $ok
+            ? $this->dispatch('toast', tipo: 'ok', titulo: 'Credencial enviada',
+                mensagem: 'Para '.$inscricao->email)
+            : $this->dispatch('toast', tipo: 'erro', titulo: 'O envio falhou',
+                mensagem: mb_substr((string) $inscricao->fresh()->qr_erro, 0, 160));
     }
 
     public function novo(): void
@@ -444,11 +465,15 @@ class extends Component {
                                    href="{{ route('participantes.credencial', ['token' => $i->token]) }}">
                                     Ver credencial
                                 </a>
-                                @if ($i->qr_enviado_em || $i->qr_erro)
-                                    <button type="button" class="btn-sm btn-ghost" wire:click="reenviar({{ $i->id }})">
-                                        Reenviar
-                                    </button>
-                                @endif
+                                <button type="button" class="btn-sm btn-ghost"
+                                        wire:click="enviarAgora({{ $i->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="enviarAgora({{ $i->id }})">
+                                    <span wire:loading.remove wire:target="enviarAgora({{ $i->id }})">
+                                        {{ $i->qr_enviado_em ? 'Reenviar' : 'Enviar' }} credencial
+                                    </span>
+                                    <span wire:loading wire:target="enviarAgora({{ $i->id }})">Enviando…</span>
+                                </button>
                             @endif
                         @endcan
                         @can('participantes.gerenciar')
