@@ -158,13 +158,17 @@ class CredencialTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
-    public function test_o_scan_leva_o_operador_ao_checkin_com_a_busca_pronta(): void
+    public function test_o_scan_leva_o_operador_a_tela_de_confirmacao(): void
     {
+        // O QR não registra entrada sozinho: leva à confirmação, onde quem está
+        // na porta confere o nome e vê para qual DIA a entrada vai. Escanear e
+        // registrar no mesmo toque marcaria presença de quem passou o crachá
+        // alheio, e ninguém perceberia até o relatório sair errado.
         $i = $this->inscrito();
 
         $this->actingAs($this->coord)
             ->get(route('participantes.scan', ['token' => $i->token]))
-            ->assertRedirect(route('participantes.checkin', ['busca' => $i->token]));
+            ->assertRedirect(route('participantes.confirmar', ['token' => $i->token]));
     }
 
     public function test_token_inexistente_na_credencial_da_404(): void

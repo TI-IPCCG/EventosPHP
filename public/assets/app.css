@@ -1946,3 +1946,57 @@ small.bloco.obs { font-style: italic }
 }
 .checkin .venda-resultados .res-preco { font-size: 1.4rem; color: var(--primary) }
 .checkin .venda-resultados .res-info strong { display: flex; align-items: center; gap: .4rem }
+
+/* ── Confirmação de entrada (a tela do QR) ───────────────────────
+   Cartão único, para ser lido de relance por quem está em pé com fila
+   na frente. Tudo grande: o nome, o dia e o botão. */
+.confirmar { max-width: 520px; margin: 0 auto }
+
+.conf-cartao {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
+  padding: 1.6rem 1.4rem; text-align: center; margin-bottom: 1rem;
+}
+.conf-cartao.conf-ok { border-color: var(--ok) }
+
+.conf-selo {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  margin: -.4rem 0 1rem; padding: .6rem .8rem;
+  border-radius: var(--radius-sm); font-weight: 700; font-size: .95rem;
+}
+.conf-selo-ok    { background: var(--ok-dim);   color: var(--ok) }
+.conf-selo-aviso { background: var(--warn-dim); color: var(--warn) }
+
+.conf-nome {
+  margin: 0; font-family: Merriweather, Georgia, serif;
+  font-size: 1.6rem; line-height: 1.25; font-weight: 700;
+}
+.conf-codigo {
+  margin: .3rem 0 0; font-family: ui-monospace, monospace;
+  font-size: 1.1rem; letter-spacing: 2px; color: var(--primary);
+}
+.conf-extra { margin: .6rem 0 0; font-size: .88rem; color: var(--muted-fg) }
+
+/* O dia precisa gritar: o mesmo QR serve os dois dias do evento, e o que
+   decide a qual deles a entrada pertence é ESTE bloco. */
+.conf-dia {
+  display: flex; flex-direction: column; align-items: center; gap: .15rem;
+  background: var(--primary-dim); border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius); padding: .9rem 1rem; margin-bottom: 1.2rem;
+}
+.conf-dia-rotulo {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted-fg); font-weight: 700;
+}
+.conf-dia-nome { font-size: 1.25rem; color: var(--primary) }
+.conf-dia-data { font-size: .85rem; color: var(--muted-fg) }
+
+.conf-acoes { display: flex; flex-direction: column; align-items: center; gap: .7rem }
+
+/* Alvo generoso: quem toca está em pé, com uma mão e pressa. */
+.conf-botao {
+  width: 100%; padding: 1.1rem 1rem; font-size: 1.1rem; font-weight: 700;
+  border-radius: var(--radius); text-align: center; text-decoration: none;
+}
+.conf-voltar { font-size: .9rem }

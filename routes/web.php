@@ -94,8 +94,18 @@ Route::middleware('auth')->group(function () {
      | operador vê sempre a mesma coisa, venha do scan, da digitação ou do nome.
      */
     Route::get('/p/{token}', fn (string $token) => redirect()->route(
-        'participantes.checkin', ['busca' => $token],
+        'participantes.confirmar', ['token' => $token],
     ))->name('participantes.scan')->middleware('can:participantes.checkin');
+
+    /*
+     | A CONFIRMAÇÃO da entrada — uma tela por pessoa, para onde o QR leva.
+     |
+     | Separada da busca de propósito: quem está na porta precisa CONFERIR antes
+     | de liberar. Escanear e registrar no mesmo toque marcaria presença de quem
+     | passou o crachá alheio, e ninguém perceberia até o relatório sair errado.
+     */
+    Route::livewire('/participantes/confirmar/{token}', 'participantes.confirmar')
+        ->name('participantes.confirmar')->middleware('can:participantes.checkin');
 
     // ── Módulo Participantes ──
     // A portaria exige `ver-participantes` (gate composto), e não

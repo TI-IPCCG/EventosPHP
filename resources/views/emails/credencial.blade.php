@@ -52,7 +52,7 @@
                     </p>
 
                     <p style="margin:0 0 22px">
-                        <a href="{{ $urlCredencial }}" style="display:inline-block;background:#334C3B;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px;font-weight:bold">Abrir a credencial</a>
+                        <a href="{{ $urlCredencial }}" style="display:inline-block;background:#334C3B;color:#FFFFFF;text-decoration:none;padding:12px 22px;border-radius:8px;font-size:15px;font-weight:bold">Ver em tela cheia ou imprimir</a>
                     </p>
 
                     <p style="margin:0 0 20px;font-size:12px;color:#5A7161;word-break:break-all">

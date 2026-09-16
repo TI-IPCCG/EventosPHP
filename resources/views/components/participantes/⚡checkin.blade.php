@@ -234,6 +234,10 @@ class extends Component {
 
         $this->dispatch('toast', tipo: 'ok', titulo: 'Inscrito e liberado',
             mensagem: $inscricao->nome.' · '.$inscricao->codigo);
+
+        // Termina na confirmação: o operador vê o que acabou de criar, com o
+        // código que a pessoa vai precisar se o e-mail não chegar.
+        $this->redirect(route('participantes.confirmar', ['token' => $inscricao->token]), navigate: true);
     }
 
     /** De onde veio a identificação — responde "quantos foram manuais?" depois. */
@@ -325,8 +329,11 @@ class extends Component {
                 @forelse ($this->resultados as $r)
                     @php($presente = $r->checkins->firstWhere('event_day_id', $this->dia?->id))
                     <li wire:key="r-{{ $r->id }}">
-                        <button type="button" wire:click="confirmar({{ $r->id }})"
-                                wire:loading.attr="disabled">
+                        {{-- Leva à confirmação em vez de registrar no toque: quem
+                             está na porta confere o nome antes de liberar, e é lá
+                             que o DIA aparece em destaque. --}}
+                        <a href="{{ route('participantes.confirmar', ['token' => $r->token]) }}"
+                           wire:navigate>
                             <div class="res-info">
                                 <strong>
                                     {{ $r->nome }}
@@ -338,9 +345,9 @@ class extends Component {
                                 </small>
                             </div>
                             <span class="res-preco">
-                                <i class="bi bi-{{ $presente ? 'check-circle-fill' : 'box-arrow-in-right' }}"></i>
+                                <i class="bi bi-{{ $presente ? 'check-circle-fill' : 'chevron-right' }}"></i>
                             </span>
-                        </button>
+                        </a>
                     </li>
                 @empty
                     <li class="vazio">
