@@ -124,7 +124,7 @@
                     <details class="nav-group"
                              @if (request()->routeIs('livraria.estoque', 'livraria.remessa',
                                                      'livraria.catalogo', 'livraria.categorias',
-                                                     'livraria.fornecedores')) open @endif>
+                                                     'livraria.fornecedores', 'livraria.vendas')) open @endif>
                         <summary>
                             <i class="bi bi-book nav-icon"></i><span>Livraria</span>
                         </summary>
@@ -133,6 +133,13 @@
                             <a href="{{ route('livraria.estoque') }}"
                                class="nav-item {{ request()->routeIs('livraria.estoque') ? 'active' : '' }}">
                                 <i class="bi bi-box-seam nav-icon"></i><span>Estoque</span>
+                            </a>
+                        @endcan
+
+                        @can('ver-livraria')
+                            <a href="{{ route('livraria.vendas') }}"
+                               class="nav-item {{ request()->routeIs('livraria.vendas') ? 'active' : '' }}">
+                                <i class="bi bi-receipt nav-icon"></i><span>Vendas</span>
                             </a>
                         @endcan
 

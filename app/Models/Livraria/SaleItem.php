@@ -22,7 +22,10 @@ class SaleItem extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['sale_id', 'copy_id', 'preco', 'custo_unitario', 'cancelado_em'];
+    protected $fillable = [
+        'sale_id', 'copy_id', 'preco', 'custo_unitario', 'cancelado_em',
+        'exchange_in_id', 'exchange_out_id',
+    ];
 
     protected $casts = [
         'preco'          => 'decimal:2',
@@ -46,5 +49,32 @@ class SaleItem extends Model
     public function scopeValidos($query)
     {
         return $query->whereNull('cancelado_em');
+    }
+
+    public function exchangeEntrada(): BelongsTo
+    {
+        return $this->belongsTo(Exchange::class, 'exchange_in_id');
+    }
+
+    public function exchangeSaida(): BelongsTo
+    {
+        return $this->belongsTo(Exchange::class, 'exchange_out_id');
+    }
+
+    /**
+     * Por que este item saiu da venda — lido por ausência, sem coluna de
+     * motivo para manter em sincronia.
+     */
+    public function motivoDaSaida(): ?string
+    {
+        if ($this->cancelado_em === null) {
+            return null;
+        }
+
+        return match (true) {
+            $this->exchange_out_id !== null  => 'troca',
+            $this->sale?->foiCancelada()     => 'estorno',
+            default                          => 'correcao',
+        };
     }
 }

@@ -82,12 +82,53 @@ class EventResult
             ->sum('valor');
     }
 
+    /**
+     * Taxas de transação: as das vendas MAIS as das cobranças adicionais de
+     * troca. Trocar por item mais caro e cobrar a diferença no cartão gera
+     * taxa nova, que a operadora retém igual.
+     */
     public function taxas(): float
     {
-        return (float) DB::table('liv_sales')
+        $vendas = (float) DB::table('liv_sales')
             ->where('event_id', $this->event->id)
             ->whereNull('cancelada_em')
             ->sum('taxa_valor');
+
+        return round($vendas + $this->taxasDeTroca(), 2);
+    }
+
+    private function taxasDeTroca(): float
+    {
+        return (float) DB::table('liv_exchanges as x')
+            ->join('liv_sales as s', 's.id', '=', 'x.sale_id')
+            ->where('x.event_id', $this->event->id)
+            // Estornar a venda desfaz o dinheiro todo, inclusive o que a troca
+            // movimentou — as trocas dela saem da conta junto.
+            ->whereNull('s.cancelada_em')
+            ->sum('x.taxa_valor');
+    }
+
+    /**
+     * O que as trocas movimentaram no caixa, sem sinal, para a conferência.
+     *
+     * @return array{devolvido: float, cobrado: float, quantidade: int}
+     */
+    public function movimentoDeTrocas(): array
+    {
+        $linha = DB::table('liv_exchanges as x')
+            ->join('liv_sales as s', 's.id', '=', 'x.sale_id')
+            ->where('x.event_id', $this->event->id)
+            ->whereNull('s.cancelada_em')
+            ->selectRaw('COUNT(*) qtd,
+                         COALESCE(SUM(CASE WHEN x.diferenca < 0 THEN -x.diferenca END), 0) devolvido,
+                         COALESCE(SUM(CASE WHEN x.diferenca > 0 THEN  x.diferenca END), 0) cobrado')
+            ->first();
+
+        return [
+            'quantidade' => (int) ($linha->qtd ?? 0),
+            'devolvido'  => (float) ($linha->devolvido ?? 0),
+            'cobrado'    => (float) ($linha->cobrado ?? 0),
+        ];
     }
 
     public function resultado(): float
@@ -125,8 +166,60 @@ class EventResult
         return ['quantidade' => (int) $linha->qtd, 'custo_evitado' => (float) $linha->custo];
     }
 
-    /** Composição por forma de pagamento, para conferir com o extrato. */
+    /**
+     * Composição por forma de pagamento, para conferir com o extrato.
+     *
+     * Soma vendas E trocas. A diferença de uma troca é movimento real de
+     * dinheiro — o troco saiu do caixa, a cobrança extra entrou no PIX — e
+     * sem ela a conferência não fecha com o que foi contado na mesa.
+     *
+     * A diferença entra COM SINAL: devolução abate o total daquela forma, que
+     * é exatamente o que aconteceu com o dinheiro.
+     */
     public function porFormaDePagamento(): array
+    {
+        $vendas = $this->vendasPorForma();
+
+        foreach ($this->trocasPorForma() as $forma => $t) {
+            $vendas[$forma] ??= ['forma' => $forma, 'transacoes' => 0, 'valor' => 0.0, 'taxa' => 0.0];
+            $vendas[$forma]['transacoes'] += $t['transacoes'];
+            $vendas[$forma]['valor']      += $t['valor'];
+            $vendas[$forma]['taxa']       += $t['taxa'];
+        }
+
+        return array_map(
+            fn ($l) => [...$l, 'valor' => round($l['valor'], 2), 'taxa' => round($l['taxa'], 2)],
+            array_values($vendas)
+        );
+    }
+
+    /** @return array<string, array{forma:string, transacoes:int, valor:float, taxa:float}> */
+    private function trocasPorForma(): array
+    {
+        return DB::table('liv_exchanges as x')
+            ->join('liv_sales as s', 's.id', '=', 'x.sale_id')
+            ->leftJoin('liv_payment_methods as pm', 'pm.id', '=', 'x.payment_method_id')
+            ->where('x.event_id', $this->event->id)
+            ->whereNull('s.cancelada_em')
+            // troca que saiu par não moveu dinheiro: não é linha de extrato
+            ->where('x.diferenca', '<>', 0)
+            ->groupBy('pm.id', 'pm.nome')
+            ->selectRaw('IFNULL(pm.nome, "Não informado") as forma,
+                         COUNT(*) as transacoes,
+                         SUM(x.diferenca) as valor,
+                         SUM(x.taxa_valor) as taxa')
+            ->get()
+            ->keyBy('forma')
+            ->map(fn ($r) => [
+                'forma'      => $r->forma,
+                'transacoes' => (int) $r->transacoes,
+                'valor'      => (float) $r->valor,
+                'taxa'       => (float) $r->taxa,
+            ])->all();
+    }
+
+    /** @return array<string, array{forma:string, transacoes:int, valor:float, taxa:float}> */
+    private function vendasPorForma(): array
     {
         return DB::table('liv_sales as s')
             ->leftJoin('liv_payment_methods as pm', 'pm.id', '=', 's.payment_method_id')
@@ -139,6 +232,7 @@ class EventResult
                          SUM(s.valor_bruto) as valor,
                          SUM(s.taxa_valor) as taxa')
             ->get()
+            ->keyBy('forma')
             ->map(fn ($r) => [
                 'forma'      => $r->forma,
                 'transacoes' => (int) $r->transacoes,
@@ -157,6 +251,7 @@ class EventResult
             'taxas'      => $this->taxas(),
             'resultado'  => $this->resultado(),
             'devolucao'  => $this->devolucao(),
+            'trocas'     => $this->movimentoDeTrocas(),
             'pagamentos' => $this->porFormaDePagamento(),
         ];
     }

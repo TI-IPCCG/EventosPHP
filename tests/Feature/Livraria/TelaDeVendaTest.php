@@ -104,6 +104,53 @@ class TelaDeVendaTest extends TestCase
         }
     }
 
+    /**
+     * Estoque extra com preços DISTINTOS, para os testes de ordem e página.
+     *
+     * O evento base tem duas linhas e ambas custam R$ 40 — ordenar por preço
+     * ali passaria por empate, provando nada. Aqui cada linha tem um preço só
+     * dela, e a ordem esperada é inequívoca.
+     *
+     * @return array<int, float> os preços criados, em ordem crescente
+     */
+    private function estocarPrecosVariados(int $quantas = 6): array
+    {
+        $sufixo = uniqid();
+
+        $cat = Category::create(['church_id' => 1, 'nome' => 'Livro '.$sufixo,
+            'slug' => "liv-$sufixo", 'usa_variacao' => false]);
+
+        // uniqid() começa pelo relógio: dentro do mesmo segundo os 4 primeiros
+        // caracteres batem com os do fornecedor do setUp e a UNIQUE do prefixo
+        // recusa. Aleatório de verdade resolve.
+        $forn = Supplier::create(['church_id' => 1, 'nome' => 'Editora '.$sufixo,
+            'prefixo' => bin2hex(random_bytes(2))]);
+
+        $remessa = Shipment::create(['event_id' => $this->evento->id,
+            'supplier_id' => $forn->id, 'condicao' => 'firme']);
+
+        $precos = [];
+
+        for ($n = 1; $n <= $quantas; $n++) {
+            $preco = $n * 10.0;
+            $precos[] = $preco;
+
+            // o nome segue o preço para que ordenar por nome e por preço deem
+            // resultados distinguíveis — se coincidissem, o teste não veria erro
+            $produto = Product::create(['church_id' => 1, 'category_id' => $cat->id,
+                'supplier_id' => $forn->id, 'nome' => sprintf('Livro %02d', $n)]);
+
+            $item = ShipmentItem::create(['shipment_id' => $remessa->id,
+                'product_id' => $produto->id, 'quantidade' => 1,
+                'custo_unitario' => $preco / 2, 'preco_venda' => $preco]);
+
+            Copy::create(['event_id' => $this->evento->id,
+                'shipment_item_id' => $item->id, 'codigo' => "L{$sufixo}{$n}"]);
+        }
+
+        return $precos;
+    }
+
     private function tela()
     {
         return Livewire::actingAs($this->voluntario)->test('livraria.venda');
@@ -128,8 +175,11 @@ class TelaDeVendaTest extends TestCase
     {
         $resultados = $this->tela()->instance()->resultados;
 
+        // getCollection() e não collect(): o paginator é Arrayable, e collect()
+        // sobre ele devolveria os METADADOS (current_page, data, total…) em vez
+        // das linhas — somando zero e passando despercebido.
         $this->assertGreaterThan(0, $resultados->count());
-        $this->assertSame(3, (int) collect($resultados)->sum('disponiveis'));  // 2 M + 1 G
+        $this->assertSame(3, (int) $resultados->getCollection()->sum('disponiveis'));  // 2 M + 1 G
     }
 
     /** Digitar filtra a mesma lista. */
@@ -225,9 +275,101 @@ class TelaDeVendaTest extends TestCase
             ->call('adicionar', $this->copies['CM001']->id)
             ->set('busca', 'Camiseta');
 
-        $m = collect($componente->instance()->resultados)->firstWhere('variacao', 'M');
+        $m = $componente->instance()->resultados->getCollection()->firstWhere('variacao', 'M');
 
         $this->assertSame(1, (int) $m->disponiveis);   // 2 − 1 no carrinho
+    }
+
+    // ── ordenação e paginação ───────────────────────────────────────
+
+    public function test_ordenar_por_preco_muda_a_ordem_da_lista(): void
+    {
+        $this->estocarPrecosVariados();
+
+        $precos = fn (string $ordem) => $this->tela()
+            ->set('porPagina', 50)
+            ->set('ordem', $ordem)
+            ->instance()->resultados->getCollection()
+            ->pluck('preco')->map(fn ($p) => (float) $p)->all();
+
+        $crescente = $precos('preco_asc');
+
+        $this->assertSame($crescente, collect($crescente)->sort()->values()->all());
+        $this->assertSame(array_reverse($crescente), $precos('preco_desc'));
+    }
+
+    public function test_ordem_padrao_e_por_nome(): void
+    {
+        $this->estocarPrecosVariados(3);
+
+        $nomes = $this->tela()->set('porPagina', 50)
+            ->instance()->resultados->getCollection()->pluck('item')->all();
+
+        $this->assertSame($nomes, collect($nomes)->sort()->values()->all());
+    }
+
+    public function test_por_pagina_divide_a_lista_e_conta_o_total(): void
+    {
+        $this->estocarPrecosVariados(6);   // + as 2 camisetas = 8 linhas
+
+        $r = $this->tela()->set('porPagina', 5)->instance()->resultados;
+
+        $this->assertCount(5, $r->items(), 'a página deveria parar no tamanho pedido');
+        $this->assertSame(8, $r->total(), 'o total conta a lista inteira, não a página');
+        $this->assertSame(2, $r->lastPage());
+    }
+
+    /**
+     * `porPagina` mora na URL, então é entrada de usuário: sem o teto, um
+     * ?porPagina=100000 vira uma consulta que derruba a mesa no meio da fila.
+     * E sem o piso, ?porPagina=1 vira uma lista de dezenas de páginas.
+     */
+    public function test_por_pagina_absurdo_e_contido_nos_limites(): void
+    {
+        $this->assertSame(50, $this->tela()->set('porPagina', 100000)->instance()->resultados->perPage());
+        $this->assertSame(5, $this->tela()->set('porPagina', 1)->instance()->resultados->perPage());
+        $this->assertSame(30, $this->tela()->set('porPagina', 30)->instance()->resultados->perPage());
+    }
+
+    /**
+     * Ordem vem da URL e vai para um ORDER BY. O mapa é fechado: valor
+     * desconhecido cai no padrão em vez de chegar perto do SQL.
+     */
+    public function test_ordem_desconhecida_nao_quebra_a_tela(): void
+    {
+        $r = $this->tela()->set('ordem', "nome'; DROP TABLE liv_sales; --")->instance()->resultados;
+
+        $this->assertGreaterThan(0, $r->total());
+        $this->assertSame('Camiseta Simpósio', $r->getCollection()->first()->item);
+    }
+
+    public function test_filtrar_volta_para_a_primeira_pagina(): void
+    {
+        $this->estocarPrecosVariados(6);
+
+        $componente = $this->tela()
+            ->set('porPagina', 5)
+            ->call('gotoPage', 2)
+            ->set('busca', 'Camiseta');
+
+        $this->assertSame(1, $componente->instance()->resultados->currentPage());
+    }
+
+    /**
+     * Adicionar um item zera a busca NO SERVIDOR, o que não dispara o hook
+     * updated — sem o resetPage() explícito, a mesa fica presa numa página
+     * que a lista inteira nem tem mais.
+     */
+    public function test_adicionar_item_volta_para_a_primeira_pagina(): void
+    {
+        $this->estocarPrecosVariados(6);
+
+        $componente = $this->tela()
+            ->set('porPagina', 5)
+            ->call('gotoPage', 2)
+            ->call('adicionar', $this->copies['CM001']->id);
+
+        $this->assertSame(1, $componente->instance()->resultados->currentPage());
     }
 
     /** Outro voluntário vendeu entre a busca e o toque: avisa, não falha calado. */

@@ -32,6 +32,7 @@ class Sale extends Model
         // sem estes dois no fillable, o update() do estorno os descarta EM SILÊNCIO:
         // a receita zera (o filtro pega o item) mas a taxa continua na conta.
         'cancelada_em', 'cancelada_por',
+        'corrigida_em', 'corrigida_por',
     ];
 
     protected $casts = [
@@ -40,6 +41,7 @@ class Sale extends Model
         'taxa_valor'      => 'decimal:2',
         'vendida_em'      => 'datetime',
         'cancelada_em'    => 'datetime',
+        'corrigida_em'    => 'datetime',
         'created_at'      => 'datetime',
     ];
 
@@ -63,9 +65,37 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class, 'sale_id');
     }
 
+    public function exchanges(): HasMany
+    {
+        return $this->hasMany(Exchange::class, 'sale_id');
+    }
+
+    /** Os itens que a venda tem HOJE — depois de trocas e correções. */
+    public function itensAtivos(): HasMany
+    {
+        return $this->items()->whereNull('cancelado_em');
+    }
+
     public function foiCancelada(): bool
     {
         return $this->cancelada_em !== null;
+    }
+
+    public function foiCorrigida(): bool
+    {
+        return $this->corrigida_em !== null;
+    }
+
+    /**
+     * Quanto a venda vale hoje, somando os itens que restaram.
+     *
+     * NÃO é `valor_bruto`, e a diferença importa: valor_bruto é o que passou
+     * no meio de pagamento e tem de continuar batendo com o extrato, mesmo
+     * depois de uma troca. Este é o valor da mercadoria que a pessoa levou.
+     */
+    public function valorDosItens(): float
+    {
+        return round((float) $this->items()->whereNull('cancelado_em')->sum('preco'), 2);
     }
 
     /** Vendas que contam para o resultado. */

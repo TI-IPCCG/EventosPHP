@@ -27,6 +27,7 @@ class PermissionSeeder extends Seeder
         'livraria.remessa'    => 'Montar remessas, lançar custos, definir preços e gerar etiquetas',
         'livraria.vender'     => 'Registrar vendas na mesa',
         'livraria.baixar'     => 'Dar baixa em exemplar sem venda (sorteio, cortesia, doação, perda)',
+        'livraria.corrigir'   => 'Corrigir, trocar itens e estornar venda já registrada',
         'livraria.fechamento' => 'Fechar o evento: acerto dos fornecedores, devolução e resultado',
         // módulo participantes
         'participantes.ver'        => 'Ver os inscritos do evento e a presença',

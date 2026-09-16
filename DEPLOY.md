@@ -131,6 +131,7 @@ consulta cross-schema das congregações depende disso:
 | `database/sql/03-seed-referencia.sql` | permissões, perfis, categorias, motivos de baixa, primeiro admin | sim |
 | `database/sql/04-triggers.sql` | gatilhos da RN09 (um exemplar não sai duas vezes) | recomendado |
 | `database/sql/05-modulo-participantes.sql` | módulo participantes, prefixo `par_` — 7 tabelas | sim |
+| `database/sql/06-troca-e-correcao.sql` | troca e correção de venda — 1 tabela + colunas em `liv_sales`/`liv_sale_items` | sim |
 
 **Antes de rodar o `03`, edite no arquivo:**
 - `SET @church := 1;` → o id real em `ipccgorg_ModernApps.churches`
@@ -139,8 +140,12 @@ consulta cross-schema das congregações depende disso:
 
 O `03` é idempotente e termina com um `SELECT` de conferência.
 
-Ao final, `ipccgorg_Eventos` tem **33 tabelas** (8 do `01` + 18 do `02` + 7 do
-`05`) e, se o `04` passou, 2 gatilhos:
+Ao final, `ipccgorg_Eventos` tem **34 tabelas** (8 do `01` + 18 do `02` + 7 do
+`05` + 1 do `06`) e, se o `04` passou, 2 gatilhos:
+
+⚠ O `06` roda **uma única vez**: as `ALTER TABLE` dele param com "Duplicate
+column name" se já tiverem sido aplicadas. Num banco que já está em produção,
+é o único arquivo a rodar — ele só acrescenta.
 
 ```sql
 SELECT COUNT(*) FROM information_schema.tables

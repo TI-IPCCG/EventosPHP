@@ -306,9 +306,14 @@
             sistema</strong>.</p>
             <p><strong>Identificar o comprador é opcional</strong> — nome e documento, úteis quando
             alguém leva para pagar depois ou pediu reserva.</p>
-            <div class="tip">💡 Errou depois de gravar? A venda pode ser
-            <strong>cancelada</strong>: os exemplares voltam para <em>disponível</em> e podem ser
-            vendidos de novo. Não refaça a conta na mão.</div>
+            <p>Com itens no carrinho aparece o atalho <strong>“Carrinho (n)”</strong> no canto
+            superior direito: toque nele e a tela pula direto para o botão de concluir, sem
+            rolar a lista inteira. Ele some sozinho quando o botão já está à vista.</p>
+            <p>A lista abre com <strong>20 itens por página</strong>. Dá para mudar para 10, 30 ou
+            50 e <strong>ordenar</strong> por nome, preço, categoria ou por quem está
+            <strong>acabando</strong> — útil para saber o que falta reabastecer na mesa.</p>
+            <div class="tip">💡 Errou depois de gravar? Não refaça a conta na mão: veja
+            <strong>Vendas registradas</strong>, logo abaixo.</div>
 
             <details class="help-sub">
                 <summary>👥 Vários voluntários na mesma mesa — "Reservados: 2"</summary>
@@ -328,9 +333,92 @@
         </div>
     </details>
 
+    {{-- ── 7. Vendas registradas ──────────────────────────────── --}}
+    <details class="help-item">
+        <summary>🧾 7. Vendas registradas — corrigir, trocar e estornar</summary>
+        <div class="help-body">
+            <p>A tela de <a href="{{ route('livraria.vendas') }}">Vendas</a> lista tudo que foi
+            registrado no evento. Busque por <strong>nome do comprador</strong>, pelo
+            <strong>código da etiqueta</strong> do item, ou pelo <strong>#número da venda</strong>.
+            Os filtros separam válidas, estornadas, corrigidas e as que tiveram troca.</p>
+
+            <p>Toque em <strong>Detalhes</strong> para ver a venda inteira: o que foi pago, os itens
+            de hoje, o que já saiu (e por quê) e o histórico de trocas.</p>
+
+            <div class="tip">⚠️ <strong>Corrigir e Trocar não são a mesma coisa</strong>, e escolher
+            errado desencontra o relatório do extrato do banco. A pergunta que decide é:
+            <strong>alguém trocou alguma coisa de verdade?</strong></div>
+
+            <details class="help-sub">
+                <summary>✏️ Corrigir lançamento — “foi digitado errado”</summary>
+                <div class="help-sub-body">
+                    <p>Use quando <strong>ninguém trocou nada</strong> e o registro é que está
+                    errado: tocou no item errado, escolheu a forma de pagamento errada, esqueceu de
+                    lançar um livro que a pessoa levou.</p>
+                    <p>A correção <strong>reescreve a venda</strong> — itens, forma de pagamento,
+                    valor e taxa — porque o número que estava lá <strong>nunca foi verdade</strong>.
+                    Fica registrado quem corrigiu e quando.</p>
+                    <p>A tela abre já marcada com os itens atuais: <strong>desmarque</strong> o que
+                    não deveria estar e <strong>busque</strong> o que faltou acrescentar.</p>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>🔄 Trocar item — “o comprador voltou”</summary>
+                <div class="help-sub-body">
+                    <p>Use quando a venda <strong>estava certa</strong> e a pessoa voltou para trocar:
+                    levou M e queria G, o item veio com defeito, desistiu de um e levou outro.</p>
+                    <p>Marque o que ela <strong>devolveu</strong>, busque o que ela
+                    <strong>levou no lugar</strong>, e a tela mostra a conta na hora:</p>
+                    <ul>
+                        <li><strong>Devolver ao comprador</strong> — o item novo é mais barato;</li>
+                        <li><strong>Cobrar do comprador</strong> — o item novo é mais caro. Aí é
+                            preciso dizer <strong>por onde a diferença foi cobrada</strong>, porque é
+                            uma transação nova, com taxa própria;</li>
+                        <li><strong>Sem diferença</strong> — mesma faixa de preço, nada a acertar.</li>
+                    </ul>
+                    <p>Também serve para <strong>só devolver</strong>: marque o item, não escolha
+                    nada no lugar, e a conta mostra quanto devolver.</p>
+
+                    <div class="tip">💡 <strong>Por que a venda continua mostrando o valor antigo?</strong>
+                    Porque é o que passou no PIX ou no cartão, e o extrato do banco vai mostrar esse
+                    valor para sempre — a operadora já reteve a taxa sobre ele. Trocar não desfaz
+                    isso. A tela mostra as duas coisas: o que foi pago, e quanto somam os itens
+                    hoje. A diferença é exatamente o que saiu ou entrou no caixa na troca.</div>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>↩️ Estornar — a venda inteira não deveria existir</summary>
+                <div class="help-sub-body">
+                    <p>Devolve <strong>todos</strong> os exemplares ao estoque e tira a venda das
+                    contas do evento. A venda continua consultável, marcada como estornada — nada é
+                    apagado.</p>
+                    <p>Se a venda tinha troca, os movimentos dela saem da conta junto: o dinheiro
+                    volta todo.</p>
+                    <div class="tip">⚠️ Um item que já tinha saído numa troca <strong>não volta</strong>
+                    ao estoque no estorno — ele já foi devolvido antes e pode estar com outra
+                    pessoa.</div>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>🔑 Quem pode mexer</summary>
+                <div class="help-sub-body">
+                    <p><strong>Ver</strong> as vendas é parte de ver a livraria. Mas
+                    <strong>corrigir, trocar e estornar</strong> exigem a permissão
+                    <code>livraria.corrigir</code> — mexer em dinheiro já registrado é ato
+                    diferente de operar a mesa.</p>
+                    <p>O voluntário da mesa abre a tela e consulta, mas não vê os botões. Dê esse
+                    perfil a quem responde pelo caixa.</p>
+                </div>
+            </details>
+        </div>
+    </details>
+
     {{-- ── 7. Estoque e Painel ────────────────────────────────── --}}
     <details class="help-item">
-        <summary>📦 7. Estoque e Painel — acompanhar durante o evento</summary>
+        <summary>📦 8. Estoque e Painel — acompanhar durante o evento</summary>
         <div class="help-body">
             <p><a href="{{ route('livraria.estoque') }}">Estoque</a> mostra o saldo do evento por
             linha (item + variação): <strong>enviados, disponível, vendido e baixado</strong>, com o
@@ -517,6 +605,8 @@
                 <li><code>livraria.catalogo</code> — fornecedores, categorias e catálogo de itens</li>
                 <li><code>livraria.remessa</code> — montar remessas, lançar custos e definir preços</li>
                 <li><code>livraria.vender</code> — registrar vendas na mesa</li>
+                <li><code>livraria.corrigir</code> — corrigir, trocar itens e estornar venda já
+                    registrada</li>
                 <li><code>livraria.baixar</code> — dar baixa em exemplar sem venda (sorteio,
                     cortesia, doação, perda)</li>
                 <li><code>livraria.fechamento</code> — acerto dos fornecedores, devolução e resultado</li>

@@ -147,6 +147,11 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/livraria/estoque', 'livraria.estoque')
         ->name('livraria.estoque')->middleware('can:ver-livraria');
 
+    // Ver as vendas é parte de ver a livraria; MEXER nelas exige
+    // livraria.corrigir, checado dentro da tela em cada ação.
+    Route::livewire('/livraria/vendas', 'livraria.vendas')
+        ->name('livraria.vendas')->middleware('can:ver-livraria');
+
     // Cadastros
     Route::livewire('/livraria/fornecedores', 'livraria.fornecedores')
         ->name('livraria.fornecedores')->middleware('can:livraria.catalogo');

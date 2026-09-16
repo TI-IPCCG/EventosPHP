@@ -11,6 +11,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * A MESA. É a tela que decide se o app presta.
@@ -30,9 +31,34 @@ new
 #[Layout('components.layouts.admin')]
 #[Title('Venda — Eventos IPCCG')]
 class extends Component {
+    use WithPagination;
+
+    /**
+     * Ordenações oferecidas. O mapa é fechado de propósito: `ordem` vem da URL,
+     * e concatenar isso num ORDER BY seria injeção de SQL servida em bandeja.
+     * Chave desconhecida cai no padrão.
+     */
+    private const ORDENS = [
+        'nome'       => 'Nome (A–Z)',
+        'preco_asc'  => 'Preço (menor primeiro)',
+        'preco_desc' => 'Preço (maior primeiro)',
+        'restantes'  => 'Acabando (menos restantes)',
+        'categoria'  => 'Categoria',
+    ];
+
+    /** Quantos por página. O teto é do pedido; o piso evita paginação absurda. */
+    private const POR_PAGINA_MIN = 5;
+    private const POR_PAGINA_MAX = 50;
+
     /** Na URL: recarregar a página no meio do atendimento não perde a busca. */
     #[Url(except: '')]
     public string $busca = '';
+
+    #[Url(except: 'nome')]
+    public string $ordem = 'nome';
+
+    #[Url(except: 20)]
+    public int $porPagina = 20;
 
     /** carrinho: [copy_id => ['rotulo' => string, 'preco' => float, 'codigo' => string]] */
     public array $carrinho = [];
@@ -53,6 +79,28 @@ class extends Component {
     public function mount(): void
     {
         abort_unless(auth()->user()->can('livraria.vender'), 403);
+    }
+
+    /**
+     * Filtrar estando na página 3 devolveria uma página vazia — a lista nova é
+     * menor que o deslocamento. Vale para os três controles.
+     */
+    public function updatedBusca(): void     { $this->resetPage(); }
+    public function updatedOrdem(): void     { $this->resetPage(); }
+    public function updatedPorPagina(): void { $this->resetPage(); }
+
+    public function ordensDisponiveis(): array
+    {
+        return self::ORDENS;
+    }
+
+    /**
+     * `porPagina` vem da URL, então é entrada de usuário: sem o limite,
+     * ?porPagina=100000 vira uma consulta que derruba a mesa no meio da fila.
+     */
+    private function tamanhoDaPagina(): int
+    {
+        return max(self::POR_PAGINA_MIN, min(self::POR_PAGINA_MAX, $this->porPagina));
     }
 
     #[Computed]
@@ -122,7 +170,15 @@ class extends Component {
                       'si.preco_venda', 'f.caminho_thumb')
             // desempate por id: sem ele, duas variações com a mesma ordem
             // saem embaralhadas e a mesa vê P/M/G trocando de lugar a cada busca
-            ->orderBy('p.nome')->orderBy('v.ordem')->orderBy('v.id')
+            ->tap(fn ($q) => match ($this->ordem) {
+                'preco_asc'  => $q->orderBy('si.preco_venda')->orderBy('p.nome'),
+                'preco_desc' => $q->orderByDesc('si.preco_venda')->orderBy('p.nome'),
+                // agregado: o ORDER BY roda depois do GROUP BY, então o alias vale
+                'restantes'  => $q->orderBy('disponiveis')->orderBy('p.nome'),
+                'categoria'  => $q->orderBy('cat.nome')->orderBy('p.nome'),
+                default      => $q->orderBy('p.nome'),
+            })
+            ->orderBy('v.ordem')->orderBy('v.id')
             ->selectRaw('si.id as shipment_item_id, p.nome as item, p.atributos,
                          cat.nome as categoria, v.nome as variacao,
                          si.preco_venda as preco, f.caminho_thumb as thumb,
@@ -132,8 +188,7 @@ class extends Component {
                              MIN(CASE WHEN h.id IS NULL THEN c.id END),
                              MIN(c.id)
                          ) as proxima_copy_id')
-            ->limit(60)
-            ->get();
+            ->paginate($this->tamanhoDaPagina());
     }
 
     #[Computed]
@@ -202,6 +257,9 @@ class extends Component {
 
         // Limpa a busca para o próximo item: a mesa é sequencial.
         $this->busca = '';
+        // Atribuir no servidor não dispara updatedBusca(): sem isto, a mesa
+        // ficaria presa na página 3 de uma lista que voltou a ser inteira.
+        $this->resetPage();
         $this->resetErrorBag('busca');
     }
 
@@ -381,14 +439,35 @@ class extends Component {
     </div>
     @error('busca') <div class="alert warn" role="alert">{{ $message }}</div> @enderror
 
-    <p class="venda-dica">
-        @if (trim($busca) === '')
-            Toque no item para adicionar. Use a busca para filtrar.
-        @else
-            {{ $this->resultados->count() }}
-            {{ $this->resultados->count() == 1 ? 'resultado' : 'resultados' }} para “{{ $busca }}”.
-        @endif
-    </p>
+    <div class="lista-controles">
+        <p class="venda-dica">
+            @if (trim($busca) === '')
+                Toque no item para adicionar. Use a busca para filtrar.
+            @else
+                {{ $this->resultados->total() }}
+                {{ $this->resultados->total() == 1 ? 'resultado' : 'resultados' }} para “{{ $busca }}”.
+            @endif
+        </p>
+
+        <div class="lista-controles-campos">
+            <label>
+                <span>Ordenar</span>
+                <select wire:model.live="ordem" aria-label="Ordenar a lista">
+                    @foreach ($this->ordensDisponiveis() as $chave => $rotulo)
+                        <option value="{{ $chave }}">{{ $rotulo }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label>
+                <span>Por página</span>
+                <select wire:model.live="porPagina" aria-label="Itens por página">
+                    @foreach ([10, 20, 30, 50] as $n)
+                        <option value="{{ $n }}">{{ $n }}</option>
+                    @endforeach
+                </select>
+            </label>
+        </div>
+    </div>
 
     <ul class="venda-resultados">
             @forelse ($this->resultados as $r)
@@ -442,9 +521,42 @@ class extends Component {
             @endforelse
         </ul>
 
+        {{ $this->resultados->links() }}
+
+    {{-- ── ATALHO FLUTUANTE PARA O CARRINHO ────────────────────
+         A lista de itens é longa e o carrinho fica DEPOIS dela: quem
+         adicionou o terceiro item está no meio da rolagem, com a fila
+         esperando, e não vê que já pode concluir. O atalho mantém o
+         carrinho à vista e leva direto ao botão de concluir.
+
+         Fica escondido de quem já está vendo as ações (--fab-oculto),
+         porque aí ele só cobriria a tela sem informar nada novo. --}}
+    @if ($carrinho)
+        <button type="button" class="venda-fab" x-ref="fab"
+                x-data="{ visivel: true }"
+                x-init="
+                    const alvo = document.getElementById('venda-concluir');
+                    if (alvo && 'IntersectionObserver' in window) {
+                        new IntersectionObserver(
+                            ([e]) => visivel = ! e.isIntersecting
+                        ).observe(alvo);
+                    }"
+                x-show="visivel"
+                x-transition.opacity
+                x-on:click="document.getElementById('venda-concluir')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })"
+                aria-label="Ir para concluir a venda">
+            <i class="bi bi-cart-fill"></i>
+            <span class="venda-fab-texto">
+                Carrinho ({{ count($carrinho) }})
+                <small>R$ {{ number_format($this->total + $this->taxaPrevista, 2, ',', '.') }}</small>
+            </span>
+        </button>
+    @endif
+
     {{-- ── CARRINHO ───────────────────────────────────────────── --}}
     @if ($carrinho)
-        <section class="venda-carrinho">
+        <section class="venda-carrinho" id="venda-carrinho">
             <h2>{{ count($carrinho) }} {{ count($carrinho) == 1 ? 'item' : 'itens' }}</h2>
 
             <ul>
@@ -499,7 +611,7 @@ class extends Component {
                 @error('documento') <span class="field-error">{{ $message }}</span> @enderror
             </details>
 
-            <div class="venda-acoes">
+            <div class="venda-acoes" id="venda-concluir">
                 <button type="button" class="secondary" wire:click="limpar"
                         wire:confirm="Descartar esta venda?">
                     Descartar

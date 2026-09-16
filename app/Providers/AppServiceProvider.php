@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -15,6 +16,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        /*
+         | O app não tem build de CSS, então as views de paginação que o Laravel
+         | traz (tailwind, bootstrap) referenciam classes que não existem aqui.
+         | A view própria usa os tokens do Emerald Archive e vale para o app
+         | inteiro: qualquer tela chama {{ $lista->links() }} e sai padronizada.
+         */
+        Paginator::defaultView('vendor.pagination.emerald');
+        Paginator::defaultSimpleView('vendor.pagination.emerald');
+
         /*
          | Ability = slug da permissão. Com isto, @can('livraria.vender') e o
          | middleware can:livraria.vender funcionam sem precisar declarar um
@@ -44,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
             || $user->hasPermission('livraria.catalogo')
             || $user->hasPermission('livraria.remessa')
             || $user->hasPermission('livraria.vender')
+            || $user->hasPermission('livraria.corrigir')
             || $user->hasPermission('livraria.fechamento'));
 
         Gate::define('operar-mesa', fn (User $user) => $user->hasPermission('livraria.vender')

@@ -2041,3 +2041,151 @@ small.bloco.obs { font-style: italic }
   font-size: .85rem; font-weight: 600; color: var(--danger, #B03A2E);
 }
 .conf-dia-troca { margin-top: .6rem; font-size: .9rem; max-width: 260px }
+
+/* ── Atalho flutuante do carrinho (mesa) ─────────────────────────
+   A lista de itens é longa e o carrinho vem DEPOIS dela. Sem isto, o
+   voluntário que adicionou três itens está no meio da rolagem e não vê
+   que já pode concluir — com fila esperando.
+
+   ⚠ Divide o canto superior direito com os toasts (.toasts, z-index 400),
+   e a mesa dispara um toast a CADA item adicionado. Por isso o atalho
+   fica abaixo deles na pilha, e os toasts descem enquanto ele existe:
+   `:has()` resolve sem JS. Navegador sem `:has()` degrada para os dois
+   no mesmo canto por ~3s — feio, nunca quebrado.                       */
+.venda-fab {
+  position: fixed;
+  top: 16px; right: 16px;
+  z-index: 350;
+  display: flex; align-items: center; gap: .55rem;
+  padding: .6rem .95rem;
+  border: 1px solid var(--primary);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,.28);
+  transition: transform .13s, box-shadow .13s;
+}
+.venda-fab:hover  { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.34) }
+.venda-fab:active { transform: translateY(0) }
+.venda-fab i { font-size: 1.05rem }
+
+.venda-fab-texto { display: flex; flex-direction: column; line-height: 1.15; text-align: left }
+.venda-fab-texto small { font-weight: 400; font-size: .72rem; color: var(--muted-fg) }
+
+/* os toasts cedem o topo enquanto o atalho estiver na tela */
+body:has(.venda-fab) .toasts { top: 76px }
+
+@media (max-width: 768px) {
+  /* a topbar mobile ocupa os 56px do topo */
+  .venda-fab { top: 68px }
+  body:has(.venda-fab) .toasts { top: 128px }
+}
+
+/* ── Controles de lista (ordenar / por página) ───────────────────
+   Padrão do app: a contagem à esquerda, os seletores à direita, e no
+   celular a barra quebra em duas linhas em vez de espremer os selects
+   a ponto de o rótulo sumir.                                          */
+.lista-controles {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  margin-bottom: .6rem;
+}
+.lista-controles .venda-dica { margin: 0 }
+
+.lista-controles-campos { display: flex; gap: .6rem; flex-shrink: 0 }
+.lista-controles-campos label {
+  display: flex; flex-direction: column; gap: .15rem;
+  font-size: .7rem; color: var(--muted-fg);
+}
+.lista-controles-campos select {
+  padding: .35rem .5rem;
+  font-size: .82rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+}
+
+@media (max-width: 560px) {
+  .lista-controles { align-items: stretch }
+  .lista-controles-campos { width: 100%; }
+  .lista-controles-campos label { flex: 1 1 0; min-width: 0 }
+  .lista-controles-campos select { width: 100% }
+}
+
+/* ── Paginação ───────────────────────────────────────────────────
+   Alvos de 36px: a mesa é um celular operado com uma das mãos, em pé.  */
+.paginacao {
+  display: flex; align-items: center; gap: .3rem; flex-wrap: wrap;
+  margin: .9rem 0 .2rem;
+}
+.pag-item {
+  min-width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 .55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit; font-size: .85rem;
+  cursor: pointer;
+  transition: border-color .13s, color .13s;
+}
+.pag-item:hover:not(.atual):not(.desabilitado) { border-color: var(--primary); color: var(--primary) }
+.pag-item.atual {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-weight: 600;
+  cursor: default;
+}
+.pag-item.desabilitado { opacity: .4; cursor: default }
+.pag-item.reticencias { border: 0; background: none; cursor: default; color: var(--muted-fg) }
+
+.pag-resumo { margin-left: auto; font-size: .75rem; color: var(--muted-fg) }
+
+@media (max-width: 560px) {
+  .pag-resumo { margin-left: 0; width: 100%; text-align: right }
+}
+
+/* ── Tela de vendas: correção e troca ────────────────────────────
+   O painel é mais denso que os outros modais do app (itens atuais,
+   itens que saíram, histórico de trocas e um formulário), então ganha
+   largura própria em vez de espremer tudo na do modal padrão.        */
+.modal-largo { max-width: 720px }
+
+.bloco-titulo {
+  margin: 1.1rem 0 .5rem;
+  font-size: .8rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted-fg);
+}
+.bloco-subtitulo { margin: .9rem 0 .4rem; font-size: .85rem; color: var(--fg) }
+
+/* ── A conta da troca ────────────────────────────────────────────
+   É o ponto inteiro da tela: quem está na mesa precisa saber, em uma
+   olhada, se devolve ou cobra — e quanto. Por isso o saldo é maior que
+   o resto e muda de cor conforme o sentido do dinheiro.              */
+.troca-conta {
+  margin-top: .9rem; padding: .8rem;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--muted);
+}
+
+.troca-saldo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-top: .6rem; padding-top: .6rem;
+  border-top: 1px dashed var(--border);
+}
+.troca-saldo strong { font-size: 1.35rem }
+.troca-saldo.cobrar   strong { color: var(--primary) }
+.troca-saldo.devolver strong { color: var(--danger) }
+.troca-saldo.par      strong { color: var(--muted-fg) }
+
+/* item que já saiu da venda: presente no histórico, apagado na leitura */
+.resumo-itens li.inativo { opacity: .55 }
+
+/* a busca de estoque dentro do modal não deve herdar a altura da mesa */
+.modal-body .venda-busca input { padding-block: .5rem }
