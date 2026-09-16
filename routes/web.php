@@ -37,9 +37,18 @@ Route::get('/credencial/{token}', function (string $token) {
      */
     $evento = App\Models\Event::withoutGlobalScopes()->findOrFail($inscricao->event_id);
 
+    // A presença que já existe, por dia. A pessoa abre a credencial para saber
+    // se já entrou hoje — antes disto, a página não respondia essa pergunta, e
+    // ela é a primeira que alguém faz ao abrir o próprio ingresso.
+    $presencas = App\Models\Participantes\Checkin::where('registration_id', $inscricao->id)
+        ->whereNull('cancelado_em')
+        ->get()
+        ->keyBy('event_day_id');
+
     return view('participantes.credencial', [
         'inscricao' => $inscricao,
         'evento'    => $evento,
+        'presencas' => $presencas,
     ]);
 })->name('participantes.credencial');
 

@@ -43,9 +43,13 @@
         .nome { font-size: 20px; font-weight: bold; margin: 0 0 2px; }
         .evento { color: var(--fraco); font-size: 13px; margin: 0 0 16px; }
 
+        /* ⚠ PRETO NO BRANCO, e não a cor da marca.
+           QR é código de barras, não enfeite: leitor de celular decide pelo
+           CONTRASTE, e verde escuro sobre branco derruba a taxa de leitura —
+           testado, e não lia. Estética aqui custa gente parada na fila. */
         .qr { width: 220px; height: 220px; margin: 0 auto; display: block; }
-        .qr rect { fill: #fff; }
-        .qr path { fill: var(--primary); }
+        .qr rect { fill: #FFFFFF; }
+        .qr path { fill: #000000; }
 
         .codigo {
             font-family: monospace; font-size: 26px; font-weight: bold;
@@ -58,6 +62,15 @@
         }
         .quando strong { color: var(--fg); }
         .quando ul { margin: 6px 0 0; padding-left: 18px; }
+        .quando .dias { list-style: none; padding-left: 0; }
+        .quando .dias li { padding: 3px 0; }
+        .quando .marca {
+            display: inline-block; width: 18px; font-weight: bold; color: #B9BDB6;
+        }
+        .quando .dia-ok { color: var(--primary); font-weight: bold; }
+        .quando .dia-ok .marca { color: var(--primary); }
+        .quando .dia-ok em { font-weight: normal; font-style: normal; color: var(--fraco); }
+        .aviso-entrada { margin: 10px 0 0; font-size: 12px; color: var(--fraco); }
 
         .acoes { margin-top: 16px; }
         button {
@@ -98,13 +111,25 @@
             <div class="quando">
                 <strong>Quando</strong>
                 @if ($dias->isNotEmpty())
-                    <ul>
+                    <ul class="dias">
                         @foreach ($dias as $d)
-                            <li>{{ $d->rotulo() }}</li>
+                            @php($entrada = $presencas->get($d->id))
+                            <li class="{{ $entrada ? 'dia-ok' : '' }}">
+                                <span class="marca">{{ $entrada ? '✓' : '○' }}</span>
+                                {{ $d->rotulo() }}
+                                @if ($entrada)
+                                    <em>entrada às {{ $entrada->registrado_em?->format('H:i') }}</em>
+                                @endif
+                            </li>
                         @endforeach
                     </ul>
+                    @if ($presencas->isEmpty())
+                        <p class="aviso-entrada">
+                            A entrada é registrada na portaria, apresentando este código.
+                        </p>
+                    @endif
                 @else
-                    <ul><li>{{ $evento->inicio->format('d/m/Y') }}</li></ul>
+                    <ul class="dias"><li>{{ $evento->inicio->format('d/m/Y') }}</li></ul>
                 @endif
             </div>
         </div>

@@ -135,6 +135,50 @@ class CredencialTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_o_qr_da_credencial_sai_em_preto(): void
+    {
+        // QR é código de barras, não enfeite: o leitor decide pelo CONTRASTE, e
+        // pintar de verde-marca derrubou a leitura em celular de verdade.
+        $i = $this->inscrito();
+        session()->flush();
+
+        $html = $this->get(route('participantes.credencial', ['token' => $i->token]))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('.qr path { fill: #000000; }', $html);
+        $this->assertStringNotContainsString('.qr path { fill: var(--primary); }', $html);
+    }
+
+    public function test_a_credencial_mostra_se_a_pessoa_ja_entrou(): void
+    {
+        // É a primeira pergunta de quem abre o próprio ingresso.
+        $i = $this->inscrito('Ja Entrou Hoje');
+        (new \App\Services\Participantes\DayService)->sincronizar($this->evento);
+
+        $dia = \App\Models\Participantes\EventDay::where('event_id', $this->evento->id)->first();
+        (new \App\Services\Participantes\CheckinService)->registrar($i, $dia, 'qr');
+
+        session()->flush();
+
+        $this->get(route('participantes.credencial', ['token' => $i->token]))
+            ->assertOk()
+            ->assertSee('entrada às')
+            ->assertSee('dia-ok', escape: false);
+    }
+
+    public function test_quem_nao_entrou_ve_a_instrucao_em_vez_da_hora(): void
+    {
+        $i = $this->inscrito('Ainda Nao Veio');
+        (new \App\Services\Participantes\DayService)->sincronizar($this->evento);
+
+        session()->flush();
+
+        $this->get(route('participantes.credencial', ['token' => $i->token]))
+            ->assertOk()
+            ->assertSee('A entrada é registrada na portaria')
+            ->assertDontSee('entrada às');
+    }
+
     public function test_a_credencial_mostra_o_evento_e_os_dias_sem_sessao(): void
     {
         $i = $this->inscrito('Com Dias');
