@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
-use Livewire\Attributes\Url;
+use App\Support\EscolhaDeExemplar;
 use App\Support\Paginacao;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -37,6 +38,7 @@ new
 #[Layout('components.layouts.admin')]
 #[Title('Vendas — Eventos IPCCG')]
 class extends Component {
+    use EscolhaDeExemplar;
     use Paginacao;
 
     private const ORDENS = [
@@ -83,7 +85,6 @@ class extends Component {
     public array $entrando = [];
     public ?int $trocaFormaId = null;
     public string $trocaMotivo = '';
-    public string $buscaEstoque = '';
 
     public function mount(): void
     {
@@ -199,35 +200,26 @@ class extends Component {
         return $this->venda?->items->whereNotNull('cancelado_em') ?? collect();
     }
 
-    /**
-     * Estoque livre para entrar na venda. Uma linha por exemplar, porque aqui
-     * o operador escolhe UM item específico — diferente da mesa, onde ele
-     * escolhe "Camiseta · M" e o sistema sorteia o exemplar.
-     */
-    #[Computed]
-    public function estoque()
+    /** Contrato de EscolhaDeExemplar. */
+    protected function eventoDaEscolha(): ?Event
     {
-        $termo = trim($this->buscaEstoque);
+        return $this->evento;
+    }
 
-        if (! $this->evento || mb_strlen($termo) < 2) {
-            return collect();
-        }
+    /**
+     * O rascunho é um só, mas tem dois donos: a troca guarda em `entrando` e a
+     * correção em `itensFinais`. Somar os dois é o que impede a lista de
+     * oferecer duas vezes o mesmo exemplar quando se alterna entre os modos
+     * sem fechar o painel.
+     */
+    protected function exemplaresJaEscolhidos(): array
+    {
+        return array_values(array_unique(array_merge($this->entrando, $this->itensFinais)));
+    }
 
-        // ⚠ O termo vai num grupo próprio. Solto, o orWhere escaparia dos
-        // filtros de evento e status e a lista ofereceria exemplar de outro
-        // evento — ou já vendido.
-        $jaEscolhidos = array_merge($this->entrando, $this->itensFinais) ?: [0];
-
-        return Copy::where('event_id', $this->evento->id)
-            ->where('status', Copy::DISPONIVEL)
-            ->whereNotIn('id', $jaEscolhidos)
-            ->where(fn ($q) => $q
-                ->where('codigo', 'like', "{$termo}%")
-                ->orWhereHas('shipmentItem.product', fn ($p) => $p->where('nome', 'like', "%{$termo}%")))
-            ->with('shipmentItem.product', 'shipmentItem.variant')
-            ->orderBy('codigo')
-            ->limit(20)
-            ->get();
+    public function jaEscolhido(int $copyId): bool
+    {
+        return in_array($copyId, $this->exemplaresJaEscolhidos(), true);
     }
 
     /**
@@ -287,7 +279,9 @@ class extends Component {
         $this->trocaFormaId = null;
         $this->trocaMotivo = '';
         $this->buscaEstoque = '';
+        $this->linhaAberta = null;
         $this->resetErrorBag();
+        $this->recalcularEscolha();
         unset($this->venda, $this->itensAtivos, $this->itensSaidos, $this->previaDaTroca);
     }
 
@@ -319,6 +313,8 @@ class extends Component {
         $this->itensFinais = in_array($copyId, $this->itensFinais, true)
             ? array_values(array_diff($this->itensFinais, [$copyId]))
             : [...$this->itensFinais, $copyId];
+
+        $this->recalcularEscolha();
     }
 
     public function alternarSaida(int $saleItemId): void
@@ -336,14 +332,17 @@ class extends Component {
             $this->entrando[] = $copyId;
         }
 
-        $this->buscaEstoque = '';
-        unset($this->previaDaTroca, $this->estoque);
+        // A busca NÃO é limpa: trocar dois exemplares do mesmo título não
+        // deve obrigar a digitar o filtro de novo entre um e outro.
+        $this->recalcularEscolha();
+        unset($this->previaDaTroca);
     }
 
     public function removerEntrada(int $copyId): void
     {
         $this->entrando = array_values(array_diff($this->entrando, [$copyId]));
-        unset($this->previaDaTroca, $this->estoque);
+        $this->recalcularEscolha();
+        unset($this->previaDaTroca);
     }
 
     /** Acrescentar exemplar numa CORREÇÃO (o item esquecido no lançamento). */
@@ -353,8 +352,7 @@ class extends Component {
             $this->itensFinais[] = $copyId;
         }
 
-        $this->buscaEstoque = '';
-        unset($this->estoque);
+        $this->recalcularEscolha();
     }
 
     // ─────────────────────────── as três ações ───────────────────────
@@ -698,7 +696,11 @@ class extends Component {
                         </ul>
                         <p class="venda-dica">Desmarque o que não deveria estar na venda.</p>
 
-                        @include('components.livraria.partials.busca-estoque', ['acao' => 'adicionarAoFinal'])
+                        @include('components.livraria.partials.escolher-exemplar', [
+                            'acaoEscolher' => 'adicionarAoFinal',
+                            'acaoTirar'    => 'alternarItemFinal',
+                            'valor'        => 'preco',
+                        ])
 
                         <div class="venda-pagamento" style="margin-top:.8rem">
                             <span class="label">Forma de pagamento</span>
@@ -776,7 +778,11 @@ class extends Component {
                             </ul>
                         @endif
 
-                        @include('components.livraria.partials.busca-estoque', ['acao' => 'adicionarEntrada'])
+                        @include('components.livraria.partials.escolher-exemplar', [
+                            'acaoEscolher' => 'adicionarEntrada',
+                            'acaoTirar'    => 'removerEntrada',
+                            'valor'        => 'preco',
+                        ])
 
                         {{-- ── A CONTA, que é o ponto da tela ── --}}
                         <div class="troca-conta">

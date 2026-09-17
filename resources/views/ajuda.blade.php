@@ -404,7 +404,8 @@
                     valor e taxa — porque o número que estava lá <strong>nunca foi verdade</strong>.
                     Fica registrado quem corrigiu e quando.</p>
                     <p>A tela abre já marcada com os itens atuais: <strong>desmarque</strong> o que
-                    não deveria estar e <strong>busque</strong> o que faltou acrescentar.</p>
+                    não deveria estar e <strong>acrescente</strong> o que faltou — pela mesma lista
+                    por item, escolhendo o exemplar no pop-up.</p>
                 </div>
             </details>
 
@@ -413,8 +414,11 @@
                 <div class="help-sub-body">
                     <p>Use quando a venda <strong>estava certa</strong> e a pessoa voltou para trocar:
                     levou M e queria G, o item veio com defeito, desistiu de um e levou outro.</p>
-                    <p>Marque o que ela <strong>devolveu</strong>, busque o que ela
-                    <strong>levou no lugar</strong>, e a tela mostra a conta na hora:</p>
+                    <p>Marque o que ela <strong>devolveu</strong>, escolha o que ela
+                    <strong>levou no lugar</strong> — a lista mostra um cartão por item, com a
+                    capa e quantos estão disponíveis; tocando nele você escolhe o
+                    <strong>código do exemplar</strong>, igual à tela de Baixas — e a tela mostra
+                    a conta na hora:</p>
                     <ul>
                         <li><strong>Devolver ao comprador</strong> — o item novo é mais barato;</li>
                         <li><strong>Cobrar do comprador</strong> — o item novo é mais caro. Aí é

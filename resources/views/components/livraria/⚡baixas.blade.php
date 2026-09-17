@@ -5,8 +5,8 @@ use App\Models\Livraria\Copy;
 use App\Models\Livraria\Writeoff;
 use App\Models\Livraria\WriteoffReason;
 use App\Services\Livraria\WriteoffService;
+use App\Support\EscolhaDeExemplar;
 use App\Support\Paginacao;
-use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -36,6 +36,7 @@ new
 #[Layout('components.layouts.admin')]
 #[Title('Baixas — Eventos IPCCG')]
 class extends Component {
+    use EscolhaDeExemplar;
     use Paginacao;
 
     private const ORDENS = [
@@ -57,10 +58,6 @@ class extends Component {
     public string $autorizado_por = '';
     public string $observacao = '';
     public array $escolhidos = [];
-    public string $buscaEstoque = '';
-
-    /** Linha de estoque aberta no pop-up, para escolher QUAL exemplar sai. */
-    public ?int $linhaAberta = null;
 
     public function mount(): void
     {
@@ -126,87 +123,20 @@ class extends Component {
         );
     }
 
-    /**
-     * O estoque livre agrupado por ITEM, como a mesa enxerga.
-     *
-     * Vinte e cinco camisetas M são vinte e cinco linhas no banco e UMA coisa
-     * na cabeça de quem opera. Listar exemplar por exemplar enterrava os
-     * outros títulos sob uma parede de códigos quase idênticos.
-     *
-     * Qual exemplar sai continua importando — é o código que faz a conferência
-     * física bater no fim — mas essa escolha desce um nível, para o pop-up.
-     *
-     * Uma consulta só, agregando: contar exemplar a exemplar viraria N+1 na
-     * mão do voluntário. Mesmo desenho da busca da mesa.
-     */
-    #[Computed]
-    public function estoque()
+    /** Contrato de EscolhaDeExemplar. */
+    protected function eventoDaEscolha(): ?Event
     {
-        if (! $this->evento) {
-            return collect();
-        }
-
-        $termo = trim($this->buscaEstoque);
-
-        return DB::table('liv_copies as c')
-            ->join('liv_shipment_items as si', 'si.id', '=', 'c.shipment_item_id')
-            ->join('liv_products as p', 'p.id', '=', 'si.product_id')
-            ->join('liv_categories as cat', 'cat.id', '=', 'p.category_id')
-            ->leftJoin('liv_variants as v', 'v.id', '=', 'si.variant_id')
-            ->leftJoin('liv_product_photos as f', function ($j) {
-                $j->on('f.product_id', '=', 'p.id')->where('f.capa', '=', 1);
-            })
-            ->where('c.event_id', $this->evento->id)
-            ->where('c.status', Copy::DISPONIVEL)
-            ->when($this->escolhidos, fn ($q) => $q->whereNotIn('c.id', $this->escolhidos))
-            ->when(mb_strlen($termo) >= 2, fn ($q) => $q->where(function ($q) use ($termo) {
-                $q->where('p.nome', 'like', "%{$termo}%")
-                  ->orWhere('c.codigo', 'like', "{$termo}%");
-            }))
-            ->groupBy('si.id', 'p.nome', 'cat.nome', 'v.nome', 'v.ordem',
-                      'si.custo_unitario', 'f.caminho_thumb')
-            ->orderBy('p.nome')->orderBy('v.ordem')->orderBy('v.id')
-            ->selectRaw('si.id as shipment_item_id, p.nome as item, cat.nome as categoria,
-                         v.nome as variacao, si.custo_unitario as custo,
-                         f.caminho_thumb as thumb, COUNT(*) as disponiveis')
-            ->limit(60)
-            ->get();
+        return $this->evento;
     }
 
-    /**
-     * Os exemplares da linha aberta — incluindo os que já estão no rascunho.
-     *
-     * Os escolhidos FICAM na lista, marcados: sumir ao ser tocado faria a
-     * lista pular sob o dedo e esconderia o que se acabou de fazer.
-     */
-    #[Computed]
-    public function exemplaresDaLinha()
+    protected function exemplaresJaEscolhidos(): array
     {
-        if (! $this->linhaAberta || ! $this->evento) {
-            return collect();
-        }
-
-        return Copy::where('event_id', $this->evento->id)
-            ->where('shipment_item_id', $this->linhaAberta)
-            ->where(fn ($q) => $q
-                ->where('status', Copy::DISPONIVEL)
-                ->orWhereIn('id', $this->escolhidos ?: [0]))
-            ->with('shipmentItem.product', 'shipmentItem.variant')
-            ->orderBy('codigo')
-            ->get();
+        return $this->escolhidos;
     }
 
-    public function abrirLinha(int $shipmentItemId): void
+    public function jaEscolhido(int $copyId): bool
     {
-        $this->linhaAberta = $shipmentItemId;
-        unset($this->exemplaresDaLinha);
-    }
-
-    public function fecharLinha(): void
-    {
-        $this->linhaAberta = null;
-        $this->buscaEstoque = '';
-        unset($this->estoque, $this->exemplaresDaLinha);
+        return in_array($copyId, $this->escolhidos, true);
     }
 
     #[Computed]
@@ -236,13 +166,15 @@ class extends Component {
         // A busca NÃO é limpa aqui: quem está sorteando três livros do mesmo
         // título continua na mesma lista, e zerar o filtro a cada escolha
         // obrigaria a digitar de novo entre um e outro.
-        unset($this->estoque, $this->selecionados, $this->custoPrevisto, $this->exemplaresDaLinha);
+        $this->recalcularEscolha();
+        unset($this->selecionados, $this->custoPrevisto);
     }
 
     public function removerExemplar(int $copyId): void
     {
         $this->escolhidos = array_values(array_diff($this->escolhidos, [$copyId]));
-        unset($this->estoque, $this->selecionados, $this->custoPrevisto, $this->exemplaresDaLinha);
+        $this->recalcularEscolha();
+        unset($this->selecionados, $this->custoPrevisto);
     }
 
     public function escolherMotivo(int $id): void
@@ -256,8 +188,8 @@ class extends Component {
         $this->reset(['reason_id', 'autorizado_por', 'observacao', 'escolhidos',
                       'buscaEstoque', 'linhaAberta']);
         $this->resetErrorBag();
-        unset($this->estoque, $this->selecionados, $this->custoPrevisto,
-              $this->motivoEscolhido, $this->exemplaresDaLinha);
+        $this->recalcularEscolha();
+        unset($this->selecionados, $this->custoPrevisto, $this->motivoEscolhido);
     }
 
     // ─────────────────────────── as ações ───────────────────────────
@@ -416,56 +348,11 @@ class extends Component {
                     </ul>
                 @endif
 
-                {{-- ── escolher o que sai ────────────────────────────
-                     Agrupado por ITEM: 25 camisetas M são uma coisa só na
-                     cabeça de quem opera, e listar exemplar por exemplar
-                     enterrava os outros títulos sob uma parede de códigos. --}}
-                <div class="venda-busca" style="margin-top:.8rem">
-                    <i class="bi bi-search"></i>
-                    <input type="search" wire:model.live.debounce.300ms="buscaEstoque"
-                           placeholder="Filtrar por nome ou código" aria-label="Buscar no estoque">
-                    @if ($buscaEstoque !== '')
-                        <button type="button" wire:click="$set('buscaEstoque', '')" aria-label="Limpar busca">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    @endif
-                </div>
-
-                <ul class="venda-resultados">
-                    @forelse ($this->estoque as $linha)
-                        <li wire:key="linha-{{ $linha->shipment_item_id }}">
-                            <button type="button" wire:click="abrirLinha({{ $linha->shipment_item_id }})">
-                                @if ($linha->thumb)
-                                    <img src="{{ Storage::disk('public')->url($linha->thumb) }}" alt="" loading="lazy">
-                                @else
-                                    <span class="thumb-vazio"><i class="bi bi-book"></i></span>
-                                @endif
-
-                                <span class="res-info">
-                                    <strong>
-                                        <span class="res-nome">{{ $linha->item }}</span>
-                                        @if ($linha->variacao) <span class="pill">{{ $linha->variacao }}</span> @endif
-                                    </strong>
-                                    <small>{{ $linha->categoria }}</small>
-                                </span>
-
-                                <span class="res-preco">
-                                    R$ {{ number_format($linha->custo, 2, ',', '.') }}
-                                    <small>{{ $linha->disponiveis }}
-                                        {{ $linha->disponiveis == 1 ? 'disponível' : 'disponíveis' }}</small>
-                                </span>
-                            </button>
-                        </li>
-                    @empty
-                        <li class="vazio">
-                            @if (trim($buscaEstoque) !== '')
-                                Nada disponível para “{{ $buscaEstoque }}”.
-                            @else
-                                Nenhum exemplar disponível neste evento.
-                            @endif
-                        </li>
-                    @endforelse
-                </ul>
+                @include('components.livraria.partials.escolher-exemplar', [
+                    'acaoEscolher' => 'adicionarExemplar',
+                    'acaoTirar'    => 'removerExemplar',
+                    'valor'        => 'custo',
+                ])
 
                 {{-- O número que muda a decisão, ANTES de confirmar. --}}
                 @if ($this->selecionados->isNotEmpty())
@@ -583,69 +470,6 @@ class extends Component {
             {{ $this->baixas->links() }}
         </section>
     </div>
-
-    {{-- ── POP-UP: QUAL EXEMPLAR SAI ──────────────────────────────
-         O código importa — é ele que faz a conferência física bater no
-         fim do evento — mas essa escolha não precisa estar na primeira
-         tela. Aqui ela vem depois de o item já estar decidido. --}}
-    @if ($linhaAberta && $this->exemplaresDaLinha->isNotEmpty())
-        @php($primeiro = $this->exemplaresDaLinha->first())
-        <div class="modal-overlay" wire:click.self="fecharLinha"
-             x-data x-on:keydown.escape.window="$wire.fecharLinha()">
-            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ex-titulo">
-                <div class="modal-header">
-                    <strong id="ex-titulo">{{ $primeiro->shipmentItem->rotulo() }}</strong>
-                    <button type="button" class="btn-sm secondary" wire:click="fecharLinha"
-                            aria-label="Fechar">✕</button>
-                </div>
-
-                <div class="modal-body">
-                    <p class="venda-dica">
-                        Escolha o exemplar que saiu — o código é o que confere com a
-                        etiqueta na mão.
-                    </p>
-
-                    <ul class="resumo-itens">
-                        @foreach ($this->exemplaresDaLinha as $c)
-                            @php($jaEscolhido = in_array((int) $c->id, $escolhidos, true))
-                            <li wire:key="ex-{{ $c->id }}">
-                                <span class="resumo-item-nome">
-                                    @if ($c->shipmentItem->product->coverPhoto)
-                                        <img class="cart-thumb"
-                                             src="{{ $c->shipmentItem->product->coverPhoto->urlThumb() }}"
-                                             alt="" loading="lazy">
-                                    @else
-                                        <span class="cart-thumb vazia"><i class="bi bi-book"></i></span>
-                                    @endif
-                                    <span>
-                                        <strong class="codigo">{{ $c->codigo }}</strong>
-                                        @if ($jaEscolhido) <span class="pill open">escolhido</span> @endif
-                                    </span>
-                                </span>
-                                <span class="valor">
-                                    @if ($jaEscolhido)
-                                        <button type="button" class="btn-sm btn-ghost"
-                                                wire:click="removerExemplar({{ $c->id }})">
-                                            Tirar
-                                        </button>
-                                    @else
-                                        <button type="button" class="btn-sm"
-                                                wire:click="adicionarExemplar({{ $c->id }})">
-                                            Escolher
-                                        </button>
-                                    @endif
-                                </span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-
-                <div class="venda-acoes" style="padding:0 1rem 1rem">
-                    <button type="button" wire:click="fecharLinha">Pronto</button>
-                </div>
-            </div>
-        </div>
-    @endif
 
     @endif
 </div>

@@ -326,45 +326,100 @@ class TelaDeVendasTest extends TestCase
         $this->assertSame(0, $venda->fresh()->exchanges()->count());
     }
 
-    /**
-     * A busca que alimenta a troca não pode oferecer exemplar vendido, de
-     * outro evento, nem o que já está no rascunho — cada um desses viraria
-     * uma troca recusada lá no serviço, depois do operador já ter escolhido.
-     */
-    public function test_a_busca_de_estoque_so_oferece_exemplar_livre(): void
+    // ────────────── escolher o que entra (padrão compartilhado) ──────────────
+    //
+    // Mesma escolha das Baixas, mesmo trait: a lista agrupa por ITEM e o código
+    // sai no pop-up. Aqui o que se trava é que a troca não pode oferecer
+    // exemplar vendido nem o que já está no rascunho — cada um desses viraria
+    // uma recusa lá no serviço, depois de o operador já ter escolhido.
+
+    public function test_a_lista_agrupa_por_item_com_a_contagem(): void
     {
         $venda = $this->vender(['VA001']);        // VA001 sai do estoque
 
-        $componente = $this->tela()
+        $linhas = $this->tela()
             ->call('abrir', $venda->id)
             ->call('abrirTroca')
-            ->set('buscaEstoque', 'VA');
+            ->instance()->estoque;
 
-        $codigos = $componente->instance()->estoque->pluck('codigo')->all();
+        $this->assertCount(2, $linhas, 'dois títulos, uma linha cada');
 
-        $this->assertNotContains('VA001', $codigos, 'esse está vendido');
-        $this->assertContains('VA002', $codigos);
-
-        // e o que já está no rascunho sai da lista
-        $codigos = $componente->call('adicionarEntrada', $this->copies['VA002']->id)
-            ->set('buscaEstoque', 'VA')
-            ->instance()->estoque->pluck('codigo')->all();
-
-        $this->assertNotContains('VA002', $codigos, 'já foi escolhido');
+        $a = $linhas->firstWhere('item', 'Título A');
+        $this->assertSame(3, (int) $a->disponiveis, 'quatro menos o vendido');
     }
 
-    public function test_a_busca_de_estoque_acha_pelo_nome_do_item(): void
+    public function test_a_contagem_desconta_o_que_ja_esta_no_rascunho(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $linhas = $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('abrirTroca')
+            ->call('adicionarEntrada', $this->copies['VA002']->id)
+            ->instance()->estoque;
+
+        $this->assertSame(2, (int) $linhas->firstWhere('item', 'Título A')->disponiveis);
+    }
+
+    public function test_a_busca_filtra_por_nome_do_item(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $linhas = $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('abrirTroca')
+            ->set('buscaEstoque', 'Título B')
+            ->instance()->estoque;
+
+        $this->assertCount(1, $linhas);
+        $this->assertSame('Título B', $linhas->first()->item);
+    }
+
+    public function test_o_popup_nao_oferece_exemplar_vendido(): void
     {
         $venda = $this->vender(['VA001']);
 
         $codigos = $this->tela()
             ->call('abrir', $venda->id)
             ->call('abrirTroca')
-            ->set('buscaEstoque', 'Título B')
-            ->instance()->estoque->pluck('codigo')->all();
+            ->call('abrirLinha', $this->copies['VA002']->shipment_item_id)
+            ->instance()->exemplaresDaLinha->pluck('codigo')->all();
 
-        $this->assertContains('VB001', $codigos);
-        $this->assertNotContains('VA002', $codigos, 'Título A não casa com a busca');
+        $this->assertNotContains('VA001', $codigos, 'esse está vendido');
+        $this->assertContains('VA002', $codigos);
+    }
+
+    /** O escolhido continua no pop-up, marcado — não some sob o dedo. */
+    public function test_o_escolhido_continua_visivel_e_marcado(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $componente = $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('abrirTroca')
+            ->call('abrirLinha', $this->copies['VA002']->shipment_item_id)
+            ->call('adicionarEntrada', $this->copies['VA002']->id);
+
+        $this->assertContains('VA002', $componente->instance()->exemplaresDaLinha->pluck('codigo')->all());
+        $this->assertTrue($componente->instance()->jaEscolhido($this->copies['VA002']->id));
+    }
+
+    /**
+     * O rascunho tem dois donos — `entrando` na troca e `itensFinais` na
+     * correção. Somar os dois é o que impede a lista de oferecer duas vezes o
+     * mesmo exemplar quando se alterna entre os modos sem fechar o painel.
+     */
+    public function test_o_rascunho_da_correcao_tambem_sai_da_lista(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $linhas = $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('abrirCorrecao')
+            ->call('adicionarAoFinal', $this->copies['VB001']->id)
+            ->instance()->estoque;
+
+        $this->assertSame(3, (int) $linhas->firstWhere('item', 'Título B')->disponiveis);
     }
 
     public function test_estornar_pela_tela_devolve_o_estoque(): void
