@@ -258,6 +258,21 @@ class extends Component {
             ->map(fn ($v) => ['id' => $v->id, 'nome' => $v->nome])->all();
     }
 
+    /**
+     * O symlink que faz a foto aparecer.
+     *
+     * `public/storage` não vai pelo FTPS (está no .gitignore, e no dev aponta
+     * para um caminho absoluto que não existe no servidor), então precisa ser
+     * criado à mão uma vez — DEPLOY.md §6.2. Sem ele o arquivo é gravado e
+     * nunca é servido: a foto some sem nenhuma mensagem, que foi o relato da
+     * mesa. Checar aqui transforma isso num aviso na tela.
+     */
+    #[Computed]
+    public function uploadsPublicados(): bool
+    {
+        return file_exists(public_path('storage'));
+    }
+
     public function enviarFoto(PhotoService $fotos): void
     {
         abort_unless(auth()->user()->can('livraria.catalogo'), 403);
@@ -267,7 +282,18 @@ class extends Component {
             'foto.max'   => 'A imagem passa de 5 MB.',
         ]);
 
-        $fotos->adicionar(Product::findOrFail($this->editando), $this->foto);
+        try {
+            $fotos->adicionar(Product::findOrFail($this->editando), $this->foto);
+        } catch (\Throwable $e) {
+            // Gravação de arquivo falha por motivo de servidor, não de uso —
+            // e a tela dizia "Foto adicionada" mesmo assim.
+            report($e);
+
+            $this->dispatch('toast', tipo: 'erro', titulo: 'A foto não foi salva',
+                mensagem: $e->getMessage());
+
+            return;
+        }
 
         $this->reset('foto');
         unset($this->fotos, $this->itens);
@@ -455,6 +481,17 @@ class extends Component {
             @if ($editando)
                 <div class="fotos-bloco">
                     <h3>Fotos</h3>
+
+                    @unless ($this->uploadsPublicados)
+                        <div class="alert danger" role="alert">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>As fotos não vão aparecer.</strong>
+                            Falta o atalho <code>public/storage</code> no servidor — ele não sobe
+                            pelo deploy e é criado uma única vez (DEPLOY.md §6.2). A foto até é
+                            gravada, mas não chega a ser exibida. Avise o responsável técnico
+                            antes de cadastrar as imagens.
+                        </div>
+                    @endunless
 
                     <div class="fotos-galeria">
                         @foreach ($this->fotos as $f)

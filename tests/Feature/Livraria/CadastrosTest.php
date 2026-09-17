@@ -14,6 +14,9 @@ use App\Models\Membership;
 use App\Models\Permission;
 use App\Models\SystemRole;
 use App\Models\User;
+use App\Models\Livraria\PaymentMethod;
+use App\Services\Livraria\PhotoService;
+use App\Services\Livraria\SaleService;
 use App\Services\Livraria\ShipmentService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -206,6 +209,50 @@ class CadastrosTest extends TestCase
         Storage::disk('public')->assertExists($foto->caminho_thumb);
     }
 
+    /**
+     * O relato da mesa: "ele carrega, fala que foi salvo, mas não salva".
+     *
+     * Storage::put() devolve FALSE em vez de lançar quando não consegue gravar
+     * — pasta ausente ou sem permissão, que é o estado natural do servidor,
+     * porque o deploy por FTPS exclui storage/**. Ignorando o retorno, a linha
+     * em liv_product_photos era criada apontando para um arquivo inexistente e
+     * o toast dizia sucesso.
+     */
+    public function test_foto_que_nao_grava_falha_alto_em_vez_de_mentir(): void
+    {
+        Storage::fake('public');
+        Storage::shouldReceive('disk')->with('public')->andReturnSelf();
+        Storage::shouldReceive('put')->andReturn(false);
+
+        $produto = $this->livro('Sem Disco');
+
+        try {
+            app(PhotoService::class)->adicionar(
+                $produto, UploadedFile::fake()->image('capa.jpg', 800, 600)
+            );
+            $this->fail('deveria ter recusado em vez de registrar foto fantasma');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('storage/app/public', $e->getMessage());
+        }
+
+        $this->assertSame(0, $produto->photos()->count(), 'nenhuma linha fantasma no banco');
+    }
+
+    /** A tela avisa quando falta o symlink, em vez de a foto sumir calada. */
+    public function test_a_tela_avisa_quando_o_symlink_de_uploads_nao_existe(): void
+    {
+        $produto = $this->livro('Com Foto');
+
+        $componente = Livewire::actingAs($this->coordenador)->test('livraria.catalogo')
+            ->call('editar', $produto->id);
+
+        // no ambiente de dev o symlink existe; o que se trava aqui é o sinal
+        $this->assertTrue(
+            $componente->instance()->uploadsPublicados,
+            'o dev tem o symlink — se este assert falhar, rode php artisan storage:link'
+        );
+    }
+
     // ─────────────── remessa ───────────────
 
     private function livro(string $nome = 'Título'): Product
@@ -293,6 +340,148 @@ class CadastrosTest extends TestCase
 
         $this->expectException(RuntimeException::class);
         $servico->removerItem($item->fresh());
+    }
+
+    // ── o que a mesa relatou: custo errado, e nada saía do caminho ──────
+    //
+    // Vender e depois ESTORNAR devolve o exemplar para 'disponivel', mas a
+    // linha em liv_sale_items fica (é o histórico). O status passava a dizer
+    // "pode apagar" enquanto a FK RESTRICT dizia "não pode", e quem recebia a
+    // discordância era o usuário — em SQLSTATE 23000, na tela.
+
+    private function venderEEstornar(Copy $copy): void
+    {
+        $forma = PaymentMethod::create(['event_id' => $this->evento->id,
+            'nome' => 'PIX '.uniqid(), 'taxa_percentual' => 0, 'ordem' => 1]);
+
+        $venda = app(SaleService::class)->registrar($this->evento->id, [$copy->id], $forma->id);
+        app(SaleService::class)->estornar($venda);
+
+        $this->assertSame(Copy::DISPONIVEL, $copy->fresh()->status, 'o estorno devolve ao estoque');
+    }
+
+    public function test_remover_linha_de_venda_estornada_explica_em_vez_de_estourar(): void
+    {
+        $servico = app(ShipmentService::class);
+        $item    = $servico->definirItem($this->remessa(), $this->livro('Livro A'), null, 2, 30, 45);
+
+        $this->venderEEstornar(Copy::where('shipment_item_id', $item->id)->first());
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/histórico|venda ou baixa/i');
+
+        $servico->removerItem($item->fresh());
+    }
+
+    /** E o erro não pode ser o do banco: a mensagem é para quem monta a remessa. */
+    public function test_a_recusa_nao_vaza_sql_para_a_tela(): void
+    {
+        $servico = app(ShipmentService::class);
+        $item    = $servico->definirItem($this->remessa(), $this->livro('Livro A'), null, 2, 30, 45);
+
+        $this->venderEEstornar(Copy::where('shipment_item_id', $item->id)->first());
+
+        try {
+            $servico->removerItem($item->fresh());
+            $this->fail('deveria ter recusado');
+        } catch (RuntimeException $e) {
+            $this->assertStringNotContainsString('SQLSTATE', $e->getMessage());
+            $this->assertStringNotContainsString('foreign key', $e->getMessage());
+        }
+    }
+
+    /**
+     * Reduzir PULA o exemplar com histórico e apaga outro no lugar.
+     *
+     * A ordem normal é tirar os códigos mais altos, para preservar os baixos.
+     * Aqui o mais alto é o que tem venda estornada, então ele fica e a conta
+     * fecha com os outros — em vez de recusar a operação inteira.
+     */
+    public function test_reduzir_pula_o_exemplar_que_tem_historico(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 3, 30, 45);
+
+        $intocavel = Copy::where('shipment_item_id', $item->id)->orderByDesc('id')->first();
+        $this->venderEEstornar($intocavel);
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 30, 45);
+
+        $restantes = Copy::where('shipment_item_id', $item->id)->pluck('id')->all();
+
+        $this->assertCount(2, $restantes);
+        $this->assertContains($intocavel->id, $restantes, 'o que tem histórico não pode sumir');
+    }
+
+    /** Quando não sobra removível suficiente, recusa — em português. */
+    public function test_reduzir_sem_exemplar_removivel_explica(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 2, 30, 45);
+
+        foreach (Copy::where('shipment_item_id', $item->id)->get() as $copy) {
+            $this->venderEEstornar($copy);
+        }
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/já esteve em alguma venda|pode ser retirado/i');
+
+        $servico->definirItem($this->remessa(), $livro, null, 1, 30, 45);
+    }
+
+    /** O conserto que ela pediu: acertar o custo sem refazer a linha. */
+    public function test_editar_custo_mantem_os_exemplares_e_os_codigos(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 3, 99.00, 45.00);
+
+        $antes = Copy::where('shipment_item_id', $item->id)->orderBy('id')->pluck('codigo')->all();
+
+        $item = $servico->definirItem($this->remessa(), $livro, null, 3, 34.20, 45.00);
+
+        $this->assertSame('34.20', $item->custo_unitario);
+        $this->assertSame($antes, Copy::where('shipment_item_id', $item->id)->orderBy('id')->pluck('codigo')->all());
+    }
+
+    /**
+     * E o custo corrigido vale para as PRÓXIMAS vendas: o que já saiu guarda o
+     * custo do dia, que é o que o acerto do fornecedor usa.
+     */
+    public function test_editar_custo_nao_reescreve_venda_ja_registrada(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 2, 99.00, 45.00);
+
+        $forma = PaymentMethod::create(['event_id' => $this->evento->id,
+            'nome' => 'PIX '.uniqid(), 'taxa_percentual' => 0, 'ordem' => 1]);
+
+        $venda = app(SaleService::class)->registrar(
+            $this->evento->id,
+            [Copy::where('shipment_item_id', $item->id)->first()->id],
+            $forma->id,
+        );
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 34.20, 45.00);
+
+        $this->assertSame('99.00', $venda->items()->first()->custo_unitario);
+    }
+
+    public function test_a_tela_traz_a_linha_para_o_formulario(): void
+    {
+        $servico = app(ShipmentService::class);
+        $item    = $servico->definirItem($this->remessa(), $this->livro('Livro A'), null, 3, 99.00, 45.00);
+
+        Livewire::actingAs($this->coordenador)->test('livraria.remessa')
+            ->set('supplier_id', $this->fornecedor->id)
+            ->call('editarLinha', $item->id)
+            ->assertSet('editandoLinha', $item->id)
+            ->assertSet('quantidade', 3)
+            ->assertSet('custo_unitario', '99.00')
+            ->assertSet('preco_venda', '45.00');
     }
 
     public function test_item_com_variacao_exige_escolher_o_tamanho(): void

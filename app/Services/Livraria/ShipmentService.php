@@ -99,25 +99,44 @@ class ShipmentService
             return;
         }
 
-        $remover     = $existentes - $quantidade;
-        $disponiveis = $item->copies()->where('status', Copy::DISPONIVEL)->count();
+        $remover = $existentes - $quantidade;
 
-        if ($disponiveis < $remover) {
+        // ⚠ "Disponível" não é o mesmo que "apagável": um exemplar de venda
+        // estornada volta a ficar disponível, mas continua referenciado em
+        // liv_sale_items, e a FK RESTRICT recusa o DELETE. Contar disponíveis
+        // e apagar em seguida estourava SQLSTATE 23000 na cara do usuário.
+        $removiveis = $this->semHistorico($item->copies()->where('status', Copy::DISPONIVEL));
+        $quantos    = (clone $removiveis)->count();
+
+        if ($quantos < $remover) {
             throw new RuntimeException(
-                "Não dá para reduzir para {$quantidade}: só {$disponiveis} "
-                .($disponiveis == 1 ? 'exemplar está disponível' : 'exemplares estão disponíveis')
-                .' e o restante já saiu.'
+                "Não dá para reduzir para {$quantidade}: só {$quantos} "
+                .($quantos == 1 ? 'exemplar pode ser retirado' : 'exemplares podem ser retirados')
+                .' — o restante já saiu ou já esteve em alguma venda, mesmo que estornada.'
             );
         }
 
-        $item->copies()
-            ->where('status', Copy::DISPONIVEL)
+        $alvos = (clone $removiveis)
             ->orderByDesc('id')          // tira os últimos, preservando os códigos baixos
             ->limit($remover)
-            ->delete();
+            ->pluck('id');
+
+        Copy::whereIn('id', $alvos)->delete();
     }
 
-    /** Remove a linha inteira — só se nenhum exemplar dela tiver saído. */
+    /**
+     * Remove a linha inteira — só se nenhum exemplar dela tiver história.
+     *
+     * ⚠ Olhar só o STATUS não basta, e essa lacuna chegou à mesa como um erro
+     * de SQL cru na tela. O estorno é soft: ele devolve o exemplar para
+     * 'disponivel' mas MANTÉM a linha em liv_sale_items (com cancelado_em),
+     * porque apagá-la apagaria o histórico da venda. Então, depois de um
+     * estorno, o status diz "pode remover" e a FK ON DELETE RESTRICT diz
+     * "não pode" — e quem recebia a discordância era o usuário, em SQLSTATE.
+     *
+     * A pergunta certa não é "o exemplar está disponível?", é "este exemplar
+     * já apareceu em alguma venda ou baixa, ainda que cancelada?".
+     */
     public function removerItem(ShipmentItem $item): void
     {
         $sairam = $item->copies()->where('status', '<>', Copy::DISPONIVEL)->count();
@@ -129,9 +148,50 @@ class ShipmentService
             );
         }
 
+        $comHistorico = $this->exemplaresComHistorico($item);
+
+        if ($comHistorico > 0) {
+            throw new RuntimeException(
+                "Não dá para remover: {$comHistorico} "
+                .($comHistorico == 1 ? 'exemplar já esteve' : 'exemplares já estiveram')
+                .' em venda ou baixa — mesmo estornada, a venda continua no histórico e '
+                .'apagar o exemplar apagaria o registro dela. '
+                .'Para acertar custo, preço ou quantidade, use o botão Editar da linha.'
+            );
+        }
+
         DB::transaction(function () use ($item) {
             $item->copies()->delete();
             $item->delete();
         });
+    }
+
+    /**
+     * Exemplares desta linha que aparecem em alguma venda ou baixa — incluindo
+     * as canceladas, que são exatamente as que o status já não denuncia.
+     */
+    private function exemplaresComHistorico(ShipmentItem $item): int
+    {
+        return $this->comHistorico($item->copies())->count();
+    }
+
+    /** Filtra a consulta de exemplares para os que TÊM história. */
+    private function comHistorico($query)
+    {
+        return $query->where(fn ($q) => $q
+            ->whereExists(fn ($s) => $s->select(DB::raw(1))
+                ->from('liv_sale_items as si')->whereColumn('si.copy_id', 'liv_copies.id'))
+            ->orWhereExists(fn ($s) => $s->select(DB::raw(1))
+                ->from('liv_writeoff_items as wi')->whereColumn('wi.copy_id', 'liv_copies.id')));
+    }
+
+    /** Filtra para os exemplares que NÃO têm história — os que podem sumir. */
+    private function semHistorico($query)
+    {
+        return $query
+            ->whereNotExists(fn ($s) => $s->select(DB::raw(1))
+                ->from('liv_sale_items as si')->whereColumn('si.copy_id', 'liv_copies.id'))
+            ->whereNotExists(fn ($s) => $s->select(DB::raw(1))
+                ->from('liv_writeoff_items as wi')->whereColumn('wi.copy_id', 'liv_copies.id'));
     }
 }

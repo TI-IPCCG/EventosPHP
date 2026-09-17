@@ -210,6 +210,30 @@
             nenhum</strong> e não cria estoque. Quem faz isso é a Remessa (passo 5).</div>
             <div class="tip">⚠️ <strong>Variação já usada em remessa não pode ser removida</strong> —
             levaria o saldo daquele tamanho junto.</div>
+
+            <details class="help-sub">
+                <summary>📷 Adicionar foto — a ordem importa</summary>
+                <div class="help-sub-body">
+                    <p>O bloco <strong>Fotos</strong> só aparece <strong>depois</strong> de salvar o
+                    item: a foto precisa saber a qual item pertence. São três passos, nesta ordem:</p>
+                    <ul>
+                        <li><strong>Salvar</strong> o item (ou abrir um já salvo em Editar);</li>
+                        <li><strong>Escolher arquivo</strong> e esperar o "Enviando…" terminar;</li>
+                        <li>tocar em <strong>Adicionar foto</strong>.</li>
+                    </ul>
+                    <div class="tip">⚠️ O botão <strong>Salvar</strong> é do item, não da foto.
+                    Escolher o arquivo e clicar em <strong>Salvar</strong> grava o item e
+                    <strong>descarta a foto</strong> — a mensagem verde que aparece é do item. O
+                    passo que anexa a imagem é o <strong>Adicionar foto</strong>.</div>
+                    <p>A primeira foto vira a <strong>capa</strong> sozinha; a capa é a que aparece
+                    nas listagens e na mesa. Para trocar, use a estrela. Limite de
+                    <strong>5 MB</strong> por imagem, e o sistema gera a miniatura sozinho.</p>
+                    <div class="tip">💡 Se aparecer um aviso vermelho dizendo que
+                    <strong>"as fotos não vão aparecer"</strong>, é configuração do servidor, não
+                    erro seu — avise o responsável técnico e não perca tempo cadastrando imagens
+                    até resolver.</div>
+                </div>
+            </details>
         </div>
     </details>
 
@@ -238,6 +262,24 @@
             <div class="tip">💡 O <strong>custo unitário fica gravado na linha</strong>, como
             fotografia do momento. Renegociar o desconto com a editora amanhã não mexe em evento já
             fechado — e é isso que faz o acerto ser confiável meses depois.</div>
+
+            <p><strong>Errou o custo ou o preço?</strong> Cada linha da lista tem o botão
+            <strong>Editar</strong>: ele traz a linha para o formulário e você ajusta quantidade,
+            custo e preço. <strong>Não é preciso remover e lançar de novo.</strong></p>
+            <ul>
+                <li>O <strong>item e a variação ficam travados</strong> na edição — eles
+                    identificam a linha; trocá-los criaria outra em vez de corrigir esta.</li>
+                <li>Os <strong>exemplares e os códigos continuam os mesmos</strong> se a
+                    quantidade não mudar. Nada de etiqueta para refazer.</li>
+                <li>O custo novo vale para as <strong>próximas</strong> vendas. O que já foi
+                    vendido guarda o custo do dia — é isso que o acerto do fornecedor usa.</li>
+            </ul>
+
+            <div class="tip">⚠️ <strong>Não conseguiu remover uma linha?</strong> Se algum exemplar
+            dela já esteve em uma venda — <strong>mesmo que você tenha estornado a venda</strong> —
+            ele não pode ser apagado: o histórico da venda depende dele. Estornar devolve o exemplar
+            para o estoque, mas não apaga o registro de que ele foi vendido um dia. Nesse caso use
+            <strong>Editar</strong>, que resolve sem tocar no histórico.</div>
 
             <details class="help-sub">
                 <summary>🔢 Códigos, etiquetas e mudança de quantidade</summary>

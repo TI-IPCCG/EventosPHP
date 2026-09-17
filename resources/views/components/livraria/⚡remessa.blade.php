@@ -8,6 +8,7 @@ use App\Models\Livraria\ShipmentItem;
 use App\Models\Livraria\Supplier;
 use App\Models\Livraria\Variant;
 use App\Services\Livraria\ShipmentService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -30,6 +31,16 @@ class extends Component {
     /** Na URL: dá link direto para a remessa de um fornecedor. */
     #[Url(except: null)]
     public ?int $supplier_id = null;
+
+    /**
+     * Id da linha sendo EDITADA, ou null quando se está acrescentando.
+     *
+     * Existe porque errar o custo ao lançar é rotina, e até aqui o único
+     * caminho para consertar era remover a linha e refazer — que o banco
+     * recusa assim que um exemplar aparece em qualquer venda, ainda que
+     * estornada. Editar resolve sem tocar no histórico.
+     */
+    public ?int $editandoLinha = null;
 
     // linha em edição
     public ?int $product_id = null;
@@ -213,6 +224,39 @@ class extends Component {
         return $atual ? max(0, $atual->copies()->count() - (int) $this->quantidade) : 0;
     }
 
+    /**
+     * Traz a linha para o formulário.
+     *
+     * Item e variação ficam TRAVADOS durante a edição: eles são a identidade
+     * da linha (o updateOrCreate casa por shipment+product+variant), então
+     * trocá-los aqui não renomearia esta linha — criaria outra, em silêncio,
+     * e deixaria a errada para trás.
+     */
+    public function editarLinha(int $id): void
+    {
+        abort_unless(auth()->user()->can('livraria.remessa'), 403);
+
+        $item = ShipmentItem::where('shipment_id', $this->remessa?->id)->findOrFail($id);
+
+        $this->editandoLinha  = $item->id;
+        $this->product_id     = $item->product_id;
+        $this->variant_id     = $item->variant_id;
+        $this->quantidade     = $item->copies()->count();
+        $this->custo_unitario = number_format((float) $item->custo_unitario, 2, '.', '');
+        $this->preco_venda    = number_format((float) $item->preco_venda, 2, '.', '');
+
+        $this->resetErrorBag();
+        unset($this->exemplaresQueSeraoRemovidos);
+    }
+
+    public function cancelarEdicao(): void
+    {
+        $this->editandoLinha = null;
+        $this->reset(['product_id', 'variant_id', 'quantidade', 'custo_unitario', 'preco_venda']);
+        $this->resetErrorBag();
+        unset($this->exemplaresQueSeraoRemovidos);
+    }
+
     public function salvarLinha(ShipmentService $remessas): void
     {
         abort_unless(auth()->user()->can('livraria.remessa'), 403);
@@ -237,6 +281,17 @@ class extends Component {
                 custoUnitario: (float) $this->custo_unitario,
                 precoVenda: (float) $this->preco_venda,
             );
+        } catch (QueryException $e) {
+            // ⚠ Antes do catch específico, esta sobra caía no RuntimeException
+            // abaixo — QueryException herda dele, via PDOException — e o toast
+            // exibia o SQLSTATE inteiro para quem está montando a remessa.
+            report($e);
+
+            $this->dispatch('toast', tipo: 'erro', titulo: 'Remessa não alterada',
+                mensagem: 'O banco recusou a alteração. Se estava reduzindo a quantidade, '
+                    .'algum exemplar já tem histórico de venda e não pode ser apagado.');
+
+            return;
         } catch (RuntimeException $e) {
             $this->dispatch('toast', tipo: 'erro', titulo: 'Remessa não alterada',
                 mensagem: $e->getMessage());
@@ -244,6 +299,7 @@ class extends Component {
             return;
         }
 
+        $this->editandoLinha = null;
         $exemplares = $item->copies()->count();
         $rotulo     = $item->rotulo();
 
@@ -260,11 +316,23 @@ class extends Component {
 
         try {
             $remessas->removerItem(ShipmentItem::findOrFail($id));
+        } catch (QueryException $e) {
+            report($e);
+
+            $this->dispatch('toast', tipo: 'erro', titulo: 'Não dá para remover',
+                mensagem: 'Algum exemplar desta linha tem histórico de venda ou baixa, '
+                    .'e apagá-lo apagaria esse registro. Use Editar para acertar os valores.');
+
+            return;
         } catch (RuntimeException $e) {
             $this->dispatch('toast', tipo: 'erro', titulo: 'Não dá para remover',
                 mensagem: $e->getMessage());
 
             return;
+        }
+
+        if ($this->editandoLinha === $id) {
+            $this->cancelarEdicao();
         }
 
         unset($this->linhas, $this->totais);
@@ -344,12 +412,24 @@ class extends Component {
         <div class="cadastro-grid">
             {{-- ── adicionar linha ── --}}
             <section class="card">
-                <h2 class="card-titulo">Adicionar item</h2>
+                <h2 class="card-titulo">
+                    {{ $editandoLinha ? 'Editar item da remessa' : 'Adicionar item' }}
+                </h2>
+
+                @if ($editandoLinha)
+                    <div class="alert warn" role="note">
+                        Item e {{ $this->produto?->usaVariacao() ? 'variação ficam' : 'variação ficam' }}
+                        travados: eles identificam a linha. Ajuste quantidade, custo e preço.
+                        <br>
+                        <small>Mudar o custo vale para as <strong>próximas</strong> vendas — o que já
+                        foi vendido guarda o custo do dia, e é isso que o acerto do fornecedor usa.</small>
+                    </div>
+                @endif
 
                 <form class="form" wire:submit="salvarLinha">
                     <div>
                         <label for="r-item">Item</label>
-                        <select id="r-item" wire:model.live="product_id">
+                        <select id="r-item" wire:model.live="product_id" @disabled($editandoLinha)>
                             <option value="">Selecione…</option>
                             @foreach ($this->itensDoFornecedor as $p)
                                 <option value="{{ $p->id }}">{{ $p->nome }}</option>
@@ -361,7 +441,7 @@ class extends Component {
                     @if ($this->produto?->usaVariacao())
                         <div>
                             <label for="r-variacao">{{ $this->produto->category->rotuloVariacao() }}</label>
-                            <select id="r-variacao" wire:model.live="variant_id" required>
+                            <select id="r-variacao" wire:model.live="variant_id" required @disabled($editandoLinha)>
                                 <option value="">Selecione…</option>
                                 @foreach ($this->produto->variants as $v)
                                     <option value="{{ $v->id }}">{{ $v->nome }}</option>
@@ -427,11 +507,16 @@ class extends Component {
                     @endif
 
                     <div class="form-acoes">
+                        @if ($editandoLinha)
+                            <button type="button" class="secondary" wire:click="cancelarEdicao">
+                                Cancelar
+                            </button>
+                        @endif
                         <button type="submit" wire:loading.attr="disabled" wire:target="salvarLinha"
                                 @if ($this->exemplaresQueSeraoRemovidos > 0)
                                     wire:confirm="Apagar {{ $this->exemplaresQueSeraoRemovidos }} exemplar(es) disponível(is) desta linha?"
                                 @endif>
-                            Salvar e gerar exemplares
+                            {{ $editandoLinha ? 'Salvar alterações' : 'Salvar e gerar exemplares' }}
                         </button>
                     </div>
                 </form>
@@ -459,10 +544,17 @@ class extends Component {
                                 · venda R$ {{ number_format($l->preco_venda, 2, ',', '.') }}
                             </small>
                         </div>
-                        <button type="button" class="btn-sm btn-danger" wire:click="removerLinha({{ $l->id }})"
-                                wire:confirm="Remover {{ $l->item }} da remessa? Isso apaga os {{ $l->exemplares }} exemplares e os códigos deles.">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <div class="card-acoes">
+                            <button type="button" class="btn-sm btn-ghost" wire:click="editarLinha({{ $l->id }})"
+                                    title="Editar quantidade, custo e preço">
+                                <i class="bi bi-pencil"></i> Editar
+                            </button>
+                            <button type="button" class="btn-sm btn-danger" wire:click="removerLinha({{ $l->id }})"
+                                    wire:confirm="Remover {{ $l->item }} da remessa? Isso apaga os {{ $l->exemplares }} exemplares e os códigos deles."
+                                    title="Remover da remessa">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 @empty
                     <p class="vazio">Nada deste fornecedor ainda.</p>

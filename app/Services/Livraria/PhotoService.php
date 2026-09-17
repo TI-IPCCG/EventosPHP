@@ -31,10 +31,15 @@ class PhotoService
         $imagem = $this->abrir($arquivo);
         $base   = 'livraria/'.$produto->id.'/'.uniqid();
 
-        $grande = $this->redimensionarEGravar($imagem, self::LARGURA_MAXIMA, "{$base}.jpg");
-        $thumb  = $this->redimensionarEGravar($imagem, self::LARGURA_THUMB,  "{$base}-thumb.jpg");
-
-        imagedestroy($imagem);
+        try {
+            $grande = $this->redimensionarEGravar($imagem, self::LARGURA_MAXIMA, "{$base}.jpg");
+            $thumb  = $this->redimensionarEGravar($imagem, self::LARGURA_THUMB,  "{$base}-thumb.jpg");
+        } finally {
+            // O recurso GD é liberado mesmo quando a gravação falha: sem isto,
+            // uma sequência de tentativas com o disco quebrado vazaria memória
+            // até derrubar o PHP.
+            imagedestroy($imagem);
+        }
 
         return DB::transaction(function () use ($produto, $grande, $thumb) {
             // A primeira foto do item vira a capa sozinha: ninguém deveria
@@ -124,7 +129,18 @@ class PhotoService
         $binario = ob_get_clean();
         imagedestroy($destino);
 
-        Storage::disk('public')->put($caminho, $binario);
+        // ⚠ put() devolve FALSE em vez de lançar quando não consegue gravar —
+        // pasta storage/app/public ausente (o deploy por FTPS exclui storage/**)
+        // ou sem permissão de escrita. Ignorar o retorno criava a linha em
+        // liv_product_photos apontando para um arquivo que nunca existiu, e a
+        // tela dizia "Foto adicionada" enquanto a imagem aparecia quebrada.
+        // Foi o que chegou da mesa como "ele fala que salvou, mas não salva".
+        if (Storage::disk('public')->put($caminho, $binario) === false) {
+            throw new RuntimeException(
+                'Não foi possível gravar a imagem no servidor. Verifique se a pasta '
+                .'storage/app/public existe e tem permissão de escrita (DEPLOY.md §6.2).'
+            );
+        }
 
         return [
             'caminho' => $caminho,
