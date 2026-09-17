@@ -1592,9 +1592,11 @@ button.secondary.is-busy::after, .btn-ghost.is-busy::after, .btn-danger.is-busy:
 }
 /* O texto dentro do cartão também herda o sublinhado se não for barrado. */
 .venda-resultados a strong, .venda-resultados a small { text-decoration: none }
+/* `contain`, como na miniatura do Catálogo: recortar a capa num quadrado come
+   o título, que é o que faz o voluntário reconhecer o livro na mesa. */
 .venda-resultados img, .venda-resultados .thumb-vazio {
   width: 44px; height: 44px; border-radius: var(--radius-sm);
-  object-fit: cover; flex: 0 0 44px;
+  object-fit: contain; background: var(--muted); flex: 0 0 44px;
 }
 .venda-resultados .thumb-vazio {
   display: grid; place-items: center;
@@ -1796,17 +1798,36 @@ small.opcional {
    dentro de um flex item. */
 .linha-registro > :first-child { flex: 1 1 auto; min-width: 0 }
 
+/* ⚠ MÍDIA NO INÍCIO DA LINHA NÃO CRESCE.
+   A regra acima mira `:first-child` (0,1,1) e vence `.mini-thumb` (0,1,0) na
+   especificidade. No Catálogo a miniatura É o primeiro filho, então ela parou
+   de valer 40px e passou a esticar pela linha inteira — com object-fit:cover
+   num retângulo largo e baixo, a capa do livro aparecia achatada.
+   Estas regras vêm DEPOIS e com a mesma especificidade, então devolvem o
+   tamanho próprio a quem tem um. */
+.linha-registro > img,
+.linha-registro > svg,
+.linha-registro > .mini-thumb { flex: 0 0 auto }
+
 /* No celular a linha empilha: os botões vão para baixo, ainda à direita, em
    vez de espremer o nome até virar duas letras. */
 @media (max-width: 560px) {
   .linha-registro { flex-wrap: wrap; gap: .5rem }
   .linha-registro > :first-child { flex: 1 1 100% }
+  .linha-registro > img,
+  .linha-registro > svg,
+  .linha-registro > .mini-thumb { flex: 0 0 auto }
   .card-acoes { width: 100%; justify-content: flex-end }
 }
 
+/* `contain` e não `cover`: capa de livro é retrato (~2:3) e recortar num
+   quadrado come justamente o título e o autor — que é o que faz reconhecer o
+   item na lista. Com o fundo neutro atrás, sobra uma tarja em vez de um corte. */
 .mini-thumb {
   width: 40px; height: 40px; flex: 0 0 40px;
-  border-radius: var(--radius-sm); object-fit: cover;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  background: var(--muted);
 }
 .mini-thumb.vazia {
   display: grid; place-items: center;
@@ -1824,7 +1845,8 @@ small.opcional {
 .fotos-galeria { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: .8rem }
 .fotos-galeria .foto { position: relative; margin: 0; width: 92px }
 .fotos-galeria img {
-  width: 92px; height: 92px; object-fit: cover;
+  width: 92px; height: 92px; object-fit: contain;
+  background: var(--muted);
   border-radius: var(--radius-sm); border: 2px solid var(--border);
 }
 .fotos-galeria .foto.capa img { border-color: var(--accent) }
