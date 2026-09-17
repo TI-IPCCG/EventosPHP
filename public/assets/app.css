@@ -2211,3 +2211,23 @@ body:has(.venda-fab) .toasts { top: 76px }
 
 /* a busca de estoque dentro do modal não deve herdar a altura da mesa */
 .modal-body .venda-busca input { padding-block: .5rem }
+
+/* ── Capa no carrinho e na confirmação ───────────────────────────
+   O voluntário monta o carrinho olhando a pilha de livros na mesa, não o
+   texto: a capa é o que confirma, num relance, que o item certo entrou —
+   e é a última chance de pegar o engano antes de gravar a venda.
+
+   `contain`, como nas outras capas: recortar num quadrado come o título. */
+.cart-thumb {
+  width: 36px; height: 36px; flex: 0 0 36px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  background: var(--muted);
+}
+.cart-thumb.vazia {
+  display: grid; place-items: center;
+  color: var(--muted-fg); font-size: .85rem;
+}
+
+/* na confirmação o nome e a capa andam juntos, à esquerda do valor */
+.resumo-item-nome { display: flex; align-items: center; gap: .6rem; min-width: 0 }

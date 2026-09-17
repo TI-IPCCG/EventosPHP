@@ -213,7 +213,7 @@ class extends Component {
             return;
         }
 
-        $copy = Copy::with('shipmentItem.product', 'shipmentItem.variant')
+        $copy = Copy::with('shipmentItem.product.coverPhoto', 'shipmentItem.variant')
             ->where('event_id', $this->evento?->id)
             ->find($copyId);
 
@@ -235,6 +235,10 @@ class extends Component {
             'codigo' => $copy->codigo,
             'rotulo' => $copy->shipmentItem->rotulo(),
             'preco'  => (float) $copy->shipmentItem->preco_venda,
+            // A URL vai no carrinho em vez do id da foto: a mesa reconhece o
+            // item pela capa, e resolver a foto a cada render custaria uma
+            // consulta por linha — com fila esperando, em 4G.
+            'thumb'  => $copy->shipmentItem->product->coverPhoto?->urlThumb(),
         ];
 
         // Reserva enquanto estiver no carrinho. Não bloqueia ninguém: só torna
@@ -562,6 +566,13 @@ class extends Component {
             <ul>
                 @foreach ($carrinho as $copyId => $item)
                     <li wire:key="cart-{{ $copyId }}">
+                        {{-- ?? null: carrinho aberto antes desta versão não
+                             tem a chave, e um erro aqui perderia a venda --}}
+                        @if ($item['thumb'] ?? null)
+                            <img class="cart-thumb" src="{{ $item['thumb'] }}" alt="" loading="lazy">
+                        @else
+                            <span class="cart-thumb vazia"><i class="bi bi-book"></i></span>
+                        @endif
                         <span class="cart-rotulo">
                             {{ $item['rotulo'] }}
                             <small>{{ $item['codigo'] }}</small>
@@ -646,9 +657,16 @@ class extends Component {
                             {{-- o código distingue dois exemplares do mesmo título:
                                  é por ele que o voluntário confere o livro na mão --}}
                             <li wire:key="resumo-{{ $copyId }}">
-                                <span>
-                                    {{ $item['rotulo'] }}
-                                    <small class="codigo">{{ $item['codigo'] }}</small>
+                                <span class="resumo-item-nome">
+                                    @if ($item['thumb'] ?? null)
+                                        <img class="cart-thumb" src="{{ $item['thumb'] }}" alt="">
+                                    @else
+                                        <span class="cart-thumb vazia"><i class="bi bi-book"></i></span>
+                                    @endif
+                                    <span>
+                                        {{ $item['rotulo'] }}
+                                        <small class="codigo">{{ $item['codigo'] }}</small>
+                                    </span>
                                 </span>
                                 <span class="valor">R$ {{ number_format($item['preco'], 2, ',', '.') }}</span>
                             </li>

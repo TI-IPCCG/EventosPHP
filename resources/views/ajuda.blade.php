@@ -348,6 +348,9 @@
             sistema</strong>.</p>
             <p><strong>Identificar o comprador é opcional</strong> — nome e documento, úteis quando
             alguém leva para pagar depois ou pediu reserva.</p>
+            <p>A <strong>capa do item aparece no carrinho e na confirmação</strong>: na mesa você
+            confere pela imagem, não pelo texto — é a última chance de pegar o item errado antes
+            de gravar. Item sem foto cadastrada entra do mesmo jeito.</p>
             <p>Com itens no carrinho aparece o atalho <strong>“Carrinho (n)”</strong> no canto
             superior direito: toque nele e a tela pula direto para o botão de concluir, sem
             rolar a lista inteira. Ele some sozinho quando o botão já está à vista.</p>
@@ -458,9 +461,68 @@
         </div>
     </details>
 
-    {{-- ── 7. Estoque e Painel ────────────────────────────────── --}}
+    {{-- ── 8. Baixas ──────────────────────────────────────────── --}}
     <details class="help-item">
-        <summary>📦 8. Estoque e Painel — acompanhar durante o evento</summary>
+        <summary>📤 8. Baixas — o que saiu sem ser vendido</summary>
+        <div class="help-body">
+            <p>Sorteio da plenária, cortesia para o preletor, doação, exemplar que caiu e
+            estragou. Em <a href="{{ route('livraria.baixas') }}">Baixas</a> você registra o que
+            <strong>saiu do estoque sem virar receita</strong>.</p>
+
+            <div class="tip">⚠️ <strong>Não venda por R$ 0,00 para dar baixa.</strong> Isso inventa
+            uma venda que nunca existiu e suja a conferência do caixa. E deixar o exemplar como
+            "disponível" é pior ainda: o saldo passa a contar um livro que não está mais lá, e o
+            acerto com o fornecedor não fecha.</div>
+
+            <p>São três informações e os exemplares:</p>
+            <ul>
+                <li><strong>Motivo</strong> → é ele que decide se a saída <strong>gera custo</strong>
+                    (veja abaixo);</li>
+                <li><strong>Autorizado por</strong> → quem decidiu. Texto livre, porque quem
+                    autoriza nem sempre tem login: pode ser o preletor ou o pastor;</li>
+                <li><strong>Observação</strong> → opcional ("sorteio de sábado", "capa molhada");</li>
+                <li><strong>Exemplares</strong> → busque por nome ou código e vá acrescentando.
+                    Uma baixa leva <strong>vários exemplares</strong>: sortear três livros informa
+                    motivo e autorização <em>uma</em> vez.</li>
+            </ul>
+
+            <p>Você escolhe o <strong>exemplar</strong>, não "3 unidades do livro X" — quem sorteia
+            tem o livro na mão, com a etiqueta. É o código que faz a conferência física do estoque
+            bater no fim do evento.</p>
+
+            <details class="help-sub">
+                <summary>💸 Por que a baixa custa dinheiro — e quando não custa</summary>
+                <div class="help-sub-body">
+                    <p>Sob consignação, o que <strong>não vende volta</strong> para a editora e não
+                    se paga. Mas o exemplar <strong>sorteado ou dado</strong> não volta — então é
+                    <strong>devido igual ao vendido</strong>, só que sem nenhuma receita em troca.</p>
+                    <p>Por isso a tela mostra <strong>quanto a baixa vai custar antes de você
+                    confirmar</strong>: sortear cinco livros de R$ 30 são R$ 150 devidos ao
+                    fornecedor, e quem autoriza precisa ver isso na hora, não no fechamento.</p>
+                    <p>A exceção é <strong>"Doação da editora"</strong>: o exemplar que a própria
+                    editora mandou para o sorteio não é devido a ninguém — a tela mostra
+                    <em>sem custo</em>.</p>
+                    <div class="tip">💡 O custo fica <strong>gravado na baixa</strong>. Se alguém
+                    mudar o motivo no futuro, o acerto de um evento já fechado não muda.</div>
+                </div>
+            </details>
+
+            <details class="help-sub">
+                <summary>↩️ Errou? Cancele a baixa</summary>
+                <div class="help-sub-body">
+                    <p>O botão <strong>Cancelar</strong> devolve os exemplares para o estoque e tira
+                    o custo da conta do evento. A baixa continua na lista, marcada como cancelada —
+                    nada é apagado.</p>
+                    <p>Registrar e cancelar exige a permissão <code>livraria.baixar</code>. Quem só
+                    vê a livraria consulta a lista, mas não recebe os botões.</p>
+                </div>
+            </details>
+        </div>
+    </details>
+
+    {{-- ── 9. Estoque e Painel ────────────────────────────────── --}}
+    <details class="help-item">
+        <summary>📦 9. Estoque e Painel — acompanhar durante o evento</summary>
         <div class="help-body">
             <p><a href="{{ route('livraria.estoque') }}">Estoque</a> mostra o saldo do evento por
             linha (item + variação): <strong>enviados, disponível, vendido e baixado</strong>, com o
@@ -803,9 +865,6 @@
             inteiro pela interface — fornecedores, catálogo, remessa, venda, estoque e painel ao
             vivo. Ainda <strong>não</strong> têm tela própria:</p>
             <ul>
-                <li><strong>Baixa sem venda</strong> — registrar sorteio, cortesia, doação ou perda.
-                    A regra e o cálculo já existem (baixa aparece no Painel e conta como devido),
-                    mas a tela para lançar ainda não.</li>
                 <li><strong>Fechamento</strong> — acerto dos fornecedores e devolução do que não
                     vendeu. O resultado já é apurado e aparece no Painel; o passo formal de fechar
                     ainda não.</li>

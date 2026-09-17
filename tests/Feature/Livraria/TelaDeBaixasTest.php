@@ -1,0 +1,354 @@
+<?php
+
+namespace Tests\Feature\Livraria;
+
+use App\Models\Event;
+use App\Models\Livraria\Category;
+use App\Models\Livraria\Copy;
+use App\Models\Livraria\PaymentMethod;
+use App\Models\Livraria\Product;
+use App\Models\Livraria\Shipment;
+use App\Models\Livraria\ShipmentItem;
+use App\Models\Livraria\Supplier;
+use App\Models\Livraria\Writeoff;
+use App\Models\Livraria\WriteoffReason;
+use App\Models\Membership;
+use App\Models\Permission;
+use App\Models\SystemRole;
+use App\Models\User;
+use App\Services\Livraria\EventResult;
+use App\Services\Livraria\SaleService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+/**
+ * Baixa sem venda pela tela.
+ *
+ * O serviço existia desde o início e nunca teve interface — o exemplar
+ * sorteado ficava eternamente "disponível" no saldo, ou alguém o "vendia" por
+ * R$ 0, inventando uma venda que nunca houve.
+ *
+ * O que estes testes travam, além do óbvio: que o MOTIVO decide o custo (e que
+ * o valor é snapshot), que o exemplar sai mesmo do estoque, e que consultar
+ * não é o mesmo que poder dar baixa.
+ */
+class TelaDeBaixasTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    protected $connectionsToTransact = ['mysql'];
+
+    private Event $evento;
+    private User $coordenador;
+    private WriteoffReason $sorteio;      // gera custo
+    private WriteoffReason $daEditora;    // não gera
+    private array $copies = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        session(['church_id' => 1]);
+        $this->montarCenario();
+        session(['event_id' => $this->evento->id]);
+
+        $this->coordenador = $this->pessoaCom(['livraria.ver', 'livraria.baixar']);
+    }
+
+    private function pessoaCom(array $slugs): User
+    {
+        foreach ($slugs as $slug) {
+            Permission::firstOrCreate(['slug' => $slug], ['description' => $slug]);
+        }
+
+        $perfil = SystemRole::create(['church_id' => 1, 'name' => 'P'.uniqid()]);
+        $perfil->permissions()->sync(Permission::whereIn('slug', $slugs)->pluck('id'));
+
+        $u = User::create(['name' => 'Operador', 'email' => 'b'.uniqid().'@ipccg.org.br',
+            'password' => 'segredo123']);
+
+        Membership::create(['user_id' => $u->id, 'church_id' => 1,
+            'system_role_id' => $perfil->id, 'status' => true, 'created_at' => now()]);
+
+        return $u;
+    }
+
+    private function montarCenario(): void
+    {
+        $sufixo = 'b'.uniqid();
+
+        $cat  = Category::create(['church_id' => 1, 'nome' => 'Livro B',
+            'slug' => "livro-$sufixo", 'usa_variacao' => false]);
+        $forn = Supplier::create(['church_id' => 1, 'nome' => 'Editora B',
+            'prefixo' => bin2hex(random_bytes(2)), 'condicao_padrao' => 'consignado']);
+
+        $this->evento = Event::create(['church_id' => 1, 'nome' => 'Simpósio',
+            'inicio' => today(), 'status' => 'em_andamento']);
+
+        $this->sorteio = WriteoffReason::create(['church_id' => 1,
+            'nome' => 'Sorteio '.$sufixo, 'gera_custo' => true, 'ativo' => true]);
+        $this->daEditora = WriteoffReason::create(['church_id' => 1,
+            'nome' => 'Doação da editora '.$sufixo, 'gera_custo' => false, 'ativo' => true]);
+
+        $remessa = Shipment::create(['event_id' => $this->evento->id,
+            'supplier_id' => $forn->id, 'condicao' => 'consignado']);
+
+        $produto = Product::create(['church_id' => 1, 'category_id' => $cat->id,
+            'supplier_id' => $forn->id, 'nome' => 'Título Sorteável']);
+
+        $item = ShipmentItem::create(['shipment_id' => $remessa->id,
+            'product_id' => $produto->id, 'quantidade' => 8,
+            'custo_unitario' => 30.00, 'preco_venda' => 45.00]);
+
+        for ($i = 1; $i <= 8; $i++) {
+            $codigo = sprintf('B%s%03d', $sufixo, $i);
+            $this->copies["B{$i}"] = Copy::create(['event_id' => $this->evento->id,
+                'shipment_item_id' => $item->id, 'codigo' => $codigo]);
+        }
+    }
+
+    private function tela(?User $quem = null)
+    {
+        return Livewire::actingAs($quem ?? $this->coordenador)->test('livraria.baixas');
+    }
+
+    private function darBaixa(array $chaves, ?WriteoffReason $motivo = null)
+    {
+        $componente = $this->tela()
+            ->call('escolherMotivo', ($motivo ?? $this->sorteio)->id)
+            ->set('autorizado_por', 'Pr. Fulano');
+
+        foreach ($chaves as $c) {
+            $componente->call('adicionarExemplar', $this->copies[$c]->id);
+        }
+
+        return $componente->call('registrar');
+    }
+
+    // ─────────────────────────── registrar ───────────────────────────
+
+    public function test_baixa_tira_o_exemplar_do_estoque(): void
+    {
+        $this->darBaixa(['B1'])->assertHasNoErrors();
+
+        $this->assertSame(Copy::BAIXADO, Copy::find($this->copies['B1']->id)->status);
+        $this->assertSame(1, Writeoff::where('event_id', $this->evento->id)->count());
+    }
+
+    /** Sortear três informa motivo e autorização UMA vez, não três. */
+    public function test_uma_baixa_leva_varios_exemplares(): void
+    {
+        $this->darBaixa(['B1', 'B2', 'B3'])->assertHasNoErrors();
+
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->assertSame(3, $baixa->items()->count());
+        $this->assertSame('Pr. Fulano', $baixa->autorizado_por);
+    }
+
+    /**
+     * O exemplar consignado que sai não volta para a editora: é devido igual
+     * ao vendido, mas sem receita nenhuma. É a razão de a baixa existir.
+     */
+    public function test_motivo_com_custo_entra_no_devido_ao_fornecedor(): void
+    {
+        $this->darBaixa(['B1', 'B2']);            // 2 × 30,00
+
+        $apuracao = EventResult::para($this->evento);
+
+        $this->assertSame(60.0, $apuracao->devidoFornecedores());
+        $this->assertSame(0.0, $apuracao->receita(), 'baixa não é venda');
+    }
+
+    public function test_motivo_sem_custo_nao_gera_divida(): void
+    {
+        $this->darBaixa(['B1'], $this->daEditora);
+
+        $this->assertSame(0.0, EventResult::para($this->evento)->devidoFornecedores());
+        $this->assertSame(Copy::BAIXADO, Copy::find($this->copies['B1']->id)->status);
+    }
+
+    /**
+     * `gera_custo` é copiado para o item. Desmarcar o motivo depois não pode
+     * mexer no acerto de um evento já fechado.
+     */
+    public function test_o_custo_e_snapshot_do_momento(): void
+    {
+        $this->darBaixa(['B1']);
+
+        $this->sorteio->update(['gera_custo' => false]);
+
+        $this->assertSame(30.0, EventResult::para($this->evento)->devidoFornecedores());
+    }
+
+    /** A conta aparece ANTES de confirmar: é o que muda a decisão de quem autoriza. */
+    public function test_a_previa_mostra_quanto_vai_custar(): void
+    {
+        $componente = $this->tela()
+            ->call('escolherMotivo', $this->sorteio->id)
+            ->call('adicionarExemplar', $this->copies['B1']->id)
+            ->call('adicionarExemplar', $this->copies['B2']->id);
+
+        $this->assertSame(60.0, $componente->instance()->custoPrevisto);
+        $this->assertSame(0, Writeoff::where('event_id', $this->evento->id)->count(), 'nada gravado só por calcular');
+    }
+
+    public function test_previa_de_motivo_sem_custo_e_zero(): void
+    {
+        $componente = $this->tela()
+            ->call('escolherMotivo', $this->daEditora->id)
+            ->call('adicionarExemplar', $this->copies['B1']->id);
+
+        $this->assertSame(0.0, $componente->instance()->custoPrevisto);
+    }
+
+    // ─────────────────────────── recusas ───────────────────────────
+
+    public function test_exige_motivo_autorizacao_e_exemplar(): void
+    {
+        $this->tela()->call('registrar')
+            ->assertHasErrors(['reason_id', 'autorizado_por', 'escolhidos']);
+
+        $this->assertSame(0, Writeoff::where('event_id', $this->evento->id)->count());
+    }
+
+    /** Outro voluntário vendeu entre a busca e o toque: avisa, não estoura. */
+    public function test_exemplar_vendido_no_meio_do_caminho_avisa(): void
+    {
+        $forma = PaymentMethod::create(['event_id' => $this->evento->id,
+            'nome' => 'PIX '.uniqid(), 'taxa_percentual' => 0, 'ordem' => 1]);
+
+        $componente = $this->tela()
+            ->call('escolherMotivo', $this->sorteio->id)
+            ->set('autorizado_por', 'Pr. Fulano')
+            ->call('adicionarExemplar', $this->copies['B1']->id);
+
+        app(SaleService::class)->registrar($this->evento->id, [$this->copies['B1']->id], $forma->id);
+
+        $componente->call('registrar')->assertHasNoErrors();   // toast, não exceção
+
+        $this->assertSame(0, Writeoff::where('event_id', $this->evento->id)->count());
+    }
+
+    public function test_a_busca_nao_oferece_exemplar_ja_baixado(): void
+    {
+        $this->darBaixa(['B1']);
+
+        $codigos = $this->tela()
+            ->set('buscaEstoque', 'Título')
+            ->instance()->estoque->pluck('codigo')->all();
+
+        $this->assertNotContains($this->copies['B1']->codigo, $codigos);
+        $this->assertContains($this->copies['B2']->codigo, $codigos);
+    }
+
+    public function test_a_busca_nao_repete_o_que_ja_esta_no_rascunho(): void
+    {
+        $codigos = $this->tela()
+            ->call('adicionarExemplar', $this->copies['B1']->id)
+            ->set('buscaEstoque', 'Título')
+            ->instance()->estoque->pluck('codigo')->all();
+
+        $this->assertNotContains($this->copies['B1']->codigo, $codigos);
+    }
+
+    // ─────────────────────────── cancelar ───────────────────────────
+
+    public function test_cancelar_devolve_os_exemplares_ao_estoque(): void
+    {
+        $this->darBaixa(['B1', 'B2']);
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->tela()->call('cancelar', $baixa->id)->assertHasNoErrors();
+
+        $this->assertNotNull($baixa->fresh()->cancelada_em);
+        $this->assertSame(Copy::DISPONIVEL, Copy::find($this->copies['B1']->id)->status);
+        $this->assertSame(0.0, EventResult::para($this->evento)->devidoFornecedores());
+    }
+
+    public function test_cancelar_duas_vezes_avisa_em_vez_de_estourar(): void
+    {
+        $this->darBaixa(['B1']);
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->tela()->call('cancelar', $baixa->id)->call('cancelar', $baixa->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(Copy::DISPONIVEL, Copy::find($this->copies['B1']->id)->status);
+    }
+
+    // ─────────────────────────── permissões ───────────────────────────
+
+    /**
+     * Consultar não é o mesmo que poder dar baixa: quem vê a livraria abre a
+     * tela, mas sem livraria.baixar não registra nem cancela.
+     */
+    public function test_quem_so_ve_a_livraria_consulta_mas_nao_da_baixa(): void
+    {
+        $curioso = $this->pessoaCom(['livraria.ver']);
+
+        $this->actingAs($curioso)->get(route('livraria.baixas'))->assertOk();
+
+        $this->tela($curioso)
+            ->call('escolherMotivo', $this->sorteio->id)
+            ->set('autorizado_por', 'Alguém')
+            ->call('adicionarExemplar', $this->copies['B1']->id)
+            ->call('registrar')
+            ->assertForbidden();
+
+        $this->assertSame(Copy::DISPONIVEL, Copy::find($this->copies['B1']->id)->status);
+    }
+
+    public function test_cancelar_exige_permissao(): void
+    {
+        $this->darBaixa(['B1']);
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $curioso = $this->pessoaCom(['livraria.ver']);
+
+        $this->tela($curioso)->call('cancelar', $baixa->id)->assertForbidden();
+
+        $this->assertNull($baixa->fresh()->cancelada_em);
+    }
+
+    public function test_quem_nao_ve_a_livraria_leva_403(): void
+    {
+        $estranho = $this->pessoaCom(['eventos.ver']);
+
+        $this->actingAs($estranho)->get(route('livraria.baixas'))->assertForbidden();
+    }
+
+    // ─────────────────────────── lista ───────────────────────────
+
+    public function test_a_lista_pagina_e_respeita_o_teto(): void
+    {
+        // seis baixas e página de cinco: o piso do seletor é 5, então pedir 3
+        // não dividiria nada — o clamp devolveria 5 e a lista viria inteira
+        foreach (['B1', 'B2', 'B3', 'B4', 'B5', 'B6'] as $c) {
+            $this->darBaixa([$c]);
+        }
+
+        $r = $this->tela()->set('porPagina', 5)->instance()->baixas;
+
+        $this->assertCount(5, $r->items());
+        $this->assertSame(6, $r->total());
+        $this->assertSame(2, $r->lastPage());
+        $this->assertSame(50, $this->tela()->set('porPagina', 99999)->instance()->baixas->perPage());
+    }
+
+    /**
+     * A hora é a de PAREDE da congregação, não a do servidor. Às 21h em Campo
+     * Grande o UTC já virou o dia seguinte, e a conferência do dia não fecharia.
+     */
+    public function test_a_hora_registrada_e_a_da_congregacao(): void
+    {
+        $this->darBaixa(['B1']);
+
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->assertSame(
+            \App\Models\Church::agora(1)->toDateString(),
+            $baixa->registrada_em->toDateString(),
+        );
+    }
+}

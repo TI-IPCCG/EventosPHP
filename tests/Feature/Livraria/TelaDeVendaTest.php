@@ -393,6 +393,49 @@ class TelaDeVendaTest extends TestCase
         $this->assertSame(1, $componente->instance()->resultados->currentPage());
     }
 
+    /**
+     * A capa vai junto para o carrinho.
+     *
+     * A mesa monta o pedido olhando a pilha de livros, não o texto — a capa é
+     * o que confirma num relance que entrou o item certo, e a última chance de
+     * pegar o engano antes de gravar. Guardada como URL no próprio carrinho
+     * porque resolver a foto a cada render custaria uma consulta por linha,
+     * com fila esperando e em 4G.
+     */
+    public function test_a_capa_acompanha_o_item_no_carrinho(): void
+    {
+        $produto = ShipmentItem::find($this->copies['CM001']->shipment_item_id)->product;
+
+        \App\Models\Livraria\ProductPhoto::create([
+            'product_id'    => $produto->id,
+            'caminho'       => 'livraria/x/capa.jpg',
+            'caminho_thumb' => 'livraria/x/capa-thumb.jpg',
+            'capa'          => true,
+            'ordem'         => 1,
+            'created_at'    => now(),
+        ]);
+
+        $carrinho = $this->tela()
+            ->call('adicionar', $this->copies['CM001']->id)
+            ->instance()->carrinho;
+
+        $item = $carrinho[$this->copies['CM001']->id];
+
+        $this->assertNotNull($item['thumb'] ?? null);
+        $this->assertStringContainsString('capa-thumb.jpg', $item['thumb']);
+    }
+
+    /** Item sem foto entra igual — a venda nunca depende de haver capa. */
+    public function test_item_sem_capa_entra_no_carrinho_do_mesmo_jeito(): void
+    {
+        $carrinho = $this->tela()
+            ->call('adicionar', $this->copies['CM001']->id)
+            ->instance()->carrinho;
+
+        $this->assertNull($carrinho[$this->copies['CM001']->id]['thumb']);
+        $this->assertCount(1, $carrinho);
+    }
+
     /** Outro voluntário vendeu entre a busca e o toque: avisa, não falha calado. */
     public function test_exemplar_vendido_por_outro_avisa_em_vez_de_estourar(): void
     {

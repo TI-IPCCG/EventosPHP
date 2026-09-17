@@ -2,6 +2,7 @@
 
 namespace App\Services\Livraria;
 
+use App\Models\Event;
 use App\Models\Livraria\Copy;
 use App\Models\Livraria\Writeoff;
 use App\Models\Livraria\WriteoffReason;
@@ -39,13 +40,19 @@ class WriteoffService
             $copies = $this->guard->travar($eventId, $copyIds);
             $copies->load('shipmentItem');
 
+            // Hora de PAREDE da congregação, não do servidor. A baixa do
+            // sorteio das 21h em Campo Grande viraria "dia seguinte" gravada em
+            // UTC, e a conferência do dia deixaria de fechar. Vale o mesmo
+            // critério do módulo de participantes.
+            $agora = Event::withoutGlobalScopes()->findOrFail($eventId)->agora();
+
             $writeoff = Writeoff::create([
                 'event_id'       => $eventId,
                 'reason_id'      => $motivo->id,
                 'autorizado_por' => $autorizadoPor,
                 'registrado_por' => $registradoPor,
                 'observacao'     => $observacao,
-                'registrada_em'  => now(),
+                'registrada_em'  => $agora,
                 'created_at'     => now(),
             ]);
 
@@ -72,7 +79,7 @@ class WriteoffService
         }
 
         return DB::transaction(function () use ($writeoff, $canceladaPor) {
-            $agora = now();
+            $agora = $writeoff->event->agora();
 
             $writeoff->update(['cancelada_em' => $agora, 'cancelada_por' => $canceladaPor]);
             $writeoff->items()->update(['cancelado_em' => $agora]);

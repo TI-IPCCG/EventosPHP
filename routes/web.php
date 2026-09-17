@@ -152,6 +152,11 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/livraria/vendas', 'livraria.vendas')
         ->name('livraria.vendas')->middleware('can:ver-livraria');
 
+    // Mesma divisão de Vendas: consultar é ver a livraria, registrar exige
+    // livraria.baixar — checado dentro da tela, em cada ação.
+    Route::livewire('/livraria/baixas', 'livraria.baixas')
+        ->name('livraria.baixas')->middleware('can:ver-livraria');
+
     // Cadastros
     Route::livewire('/livraria/fornecedores', 'livraria.fornecedores')
         ->name('livraria.fornecedores')->middleware('can:livraria.catalogo');
