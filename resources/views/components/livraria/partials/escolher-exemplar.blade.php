@@ -76,9 +76,7 @@
             </div>
 
             <div class="modal-body">
-                <p class="venda-dica">
-                    Escolha o exemplar — o código é o que confere com a etiqueta na mão.
-                </p>
+                <p class="venda-dica">Escolha o exemplar.</p>
 
                 <ul class="resumo-itens">
                     @foreach ($this->exemplaresDaLinha as $c)
