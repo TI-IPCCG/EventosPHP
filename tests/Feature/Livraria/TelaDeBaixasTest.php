@@ -230,26 +230,117 @@ class TelaDeBaixasTest extends TestCase
         $this->assertSame(0, Writeoff::where('event_id', $this->evento->id)->count());
     }
 
-    public function test_a_busca_nao_oferece_exemplar_ja_baixado(): void
+    // ────────────────── escolher o que sai ──────────────────
+    //
+    // A lista é agrupada por ITEM: 25 camisetas M são uma coisa só para quem
+    // opera, e exemplar por exemplar enterrava os outros títulos sob uma
+    // parede de códigos quase idênticos. O código continua importando — é ele
+    // que faz a conferência física bater — mas desce um nível, para o pop-up.
+
+    public function test_a_lista_agrupa_os_exemplares_num_item_so(): void
+    {
+        $estoque = $this->tela()->instance()->estoque;
+
+        $this->assertCount(1, $estoque, 'oito exemplares do mesmo título são uma linha');
+        $this->assertSame(8, (int) $estoque->first()->disponiveis);
+        $this->assertSame('Título Sorteável', $estoque->first()->item);
+    }
+
+    public function test_a_contagem_desconta_o_que_ja_foi_baixado(): void
+    {
+        $this->darBaixa(['B1']);
+
+        $this->assertSame(7, (int) $this->tela()->instance()->estoque->first()->disponiveis);
+    }
+
+    public function test_a_contagem_desconta_o_que_ja_esta_no_rascunho(): void
+    {
+        $estoque = $this->tela()
+            ->call('adicionarExemplar', $this->copies['B1']->id)
+            ->instance()->estoque;
+
+        $this->assertSame(7, (int) $estoque->first()->disponiveis);
+    }
+
+    public function test_a_lista_abre_sem_busca(): void
+    {
+        // Na venda o mesmo: exigir que se digite deixa a tela em branco e
+        // ninguém adivinha o que fazer.
+        $this->assertCount(1, $this->tela()->instance()->estoque);
+    }
+
+    public function test_a_busca_filtra_por_nome_e_por_codigo(): void
+    {
+        $this->assertCount(1, $this->tela()->set('buscaEstoque', 'Sorteável')->instance()->estoque);
+        $this->assertCount(1, $this->tela()->set('buscaEstoque', $this->copies['B1']->codigo)->instance()->estoque);
+        $this->assertCount(0, $this->tela()->set('buscaEstoque', 'Inexistente')->instance()->estoque);
+    }
+
+    public function test_o_popup_lista_os_exemplares_daquela_linha(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $exemplares = $this->tela()
+            ->call('abrirLinha', $shipmentItemId)
+            ->instance()->exemplaresDaLinha;
+
+        $this->assertCount(8, $exemplares);
+        $this->assertContains($this->copies['B1']->codigo, $exemplares->pluck('codigo')->all());
+    }
+
+    /**
+     * O exemplar escolhido CONTINUA no pop-up, marcado. Sumir ao ser tocado
+     * faria a lista pular sob o dedo e esconderia o que se acabou de fazer.
+     */
+    public function test_o_escolhido_continua_visivel_no_popup(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $componente = $this->tela()
+            ->call('abrirLinha', $shipmentItemId)
+            ->call('adicionarExemplar', $this->copies['B1']->id);
+
+        $codigos = $componente->instance()->exemplaresDaLinha->pluck('codigo')->all();
+
+        $this->assertContains($this->copies['B1']->codigo, $codigos);
+        $this->assertCount(8, $codigos);
+    }
+
+    public function test_o_popup_nao_oferece_exemplar_ja_baixado(): void
     {
         $this->darBaixa(['B1']);
 
         $codigos = $this->tela()
-            ->set('buscaEstoque', 'Título')
-            ->instance()->estoque->pluck('codigo')->all();
+            ->call('abrirLinha', $this->copies['B2']->shipment_item_id)
+            ->instance()->exemplaresDaLinha->pluck('codigo')->all();
 
         $this->assertNotContains($this->copies['B1']->codigo, $codigos);
-        $this->assertContains($this->copies['B2']->codigo, $codigos);
+        $this->assertCount(7, $codigos);
     }
 
-    public function test_a_busca_nao_repete_o_que_ja_esta_no_rascunho(): void
+    /**
+     * Escolher NÃO limpa o filtro: quem sorteia três livros do mesmo título
+     * continua na mesma lista, sem redigitar entre um e outro.
+     */
+    public function test_escolher_mantem_o_filtro(): void
     {
-        $codigos = $this->tela()
-            ->call('adicionarExemplar', $this->copies['B1']->id)
-            ->set('buscaEstoque', 'Título')
-            ->instance()->estoque->pluck('codigo')->all();
+        $componente = $this->tela()
+            ->set('buscaEstoque', 'Sorteável')
+            ->call('abrirLinha', $this->copies['B1']->shipment_item_id)
+            ->call('adicionarExemplar', $this->copies['B1']->id);
 
-        $this->assertNotContains($this->copies['B1']->codigo, $codigos);
+        $this->assertSame('Sorteável', $componente->instance()->buscaEstoque);
+    }
+
+    public function test_fechar_o_popup_limpa_o_filtro_e_a_linha(): void
+    {
+        $componente = $this->tela()
+            ->set('buscaEstoque', 'Sorteável')
+            ->call('abrirLinha', $this->copies['B1']->shipment_item_id)
+            ->call('fecharLinha');
+
+        $this->assertNull($componente->instance()->linhaAberta);
+        $this->assertSame('', $componente->instance()->buscaEstoque);
     }
 
     // ─────────────────────────── cancelar ───────────────────────────

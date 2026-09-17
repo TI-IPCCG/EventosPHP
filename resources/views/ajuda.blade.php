@@ -481,14 +481,23 @@
                 <li><strong>Autorizado por</strong> → quem decidiu. Texto livre, porque quem
                     autoriza nem sempre tem login: pode ser o preletor ou o pastor;</li>
                 <li><strong>Observação</strong> → opcional ("sorteio de sábado", "capa molhada");</li>
-                <li><strong>Exemplares</strong> → busque por nome ou código e vá acrescentando.
-                    Uma baixa leva <strong>vários exemplares</strong>: sortear três livros informa
-                    motivo e autorização <em>uma</em> vez.</li>
+                <li><strong>Exemplares</strong> → toque no item e escolha quais saíram.
+                    Uma baixa leva <strong>vários</strong>: sortear três livros informa motivo e
+                    autorização <em>uma</em> vez.</li>
             </ul>
 
-            <p>Você escolhe o <strong>exemplar</strong>, não "3 unidades do livro X" — quem sorteia
-            tem o livro na mão, com a etiqueta. É o código que faz a conferência física do estoque
-            bater no fim do evento.</p>
+            <p>A lista mostra <strong>um cartão por item</strong>, com a capa e quantos estão
+            disponíveis — 25 camisetas M aparecem como uma linha só, e não como 25 códigos quase
+            iguais. Ao tocar, abre a <strong>escolha do exemplar</strong>: é ali que você seleciona
+            o código que corresponde à etiqueta na mão.</p>
+
+            <div class="tip">💡 <strong>Por que escolher o exemplar, e não só a quantidade?</strong>
+            Porque é o código que faz a <strong>conferência física do estoque</strong> bater no fim
+            do evento: o sistema sabe exatamente qual unidade saiu da caixa.</div>
+
+            <p>O que você já escolheu fica <strong>marcado</strong> na lista do pop-up, com a opção
+            de tirar. O filtro que você digitou <strong>não é limpo</strong> a cada escolha — dá
+            para sortear três livros do mesmo título sem redigitar.</p>
 
             <details class="help-sub">
                 <summary>💸 Por que a baixa custa dinheiro — e quando não custa</summary>
