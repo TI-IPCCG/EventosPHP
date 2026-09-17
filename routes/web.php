@@ -169,4 +169,8 @@ Route::middleware('auth')->group(function () {
 
     Route::livewire('/livraria/remessa', 'livraria.remessa')
         ->name('livraria.remessa')->middleware('can:livraria.remessa');
+
+    // Folha de etiquetas: opcional, sem trava nenhuma no resto do app.
+    Route::view('/livraria/etiquetas', 'livraria.etiquetas')
+        ->name('livraria.etiquetas')->middleware('can:livraria.remessa');
 });

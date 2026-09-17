@@ -285,8 +285,23 @@
                 <summary>🔢 Códigos, etiquetas e mudança de quantidade</summary>
                 <div class="help-sub-body">
                     <p>Cada exemplar ganha um <strong>código sequencial por fornecedor</strong>:
-                    <code>ECC001</code>, <code>ECC002</code>… É esse código que vai na etiqueta e é
-                    ele que a mesa digita para adicionar direto ao carrinho.</p>
+                    <code>ECC001</code>, <code>ECC002</code>… Ele aparece em toda a livraria e a mesa
+                    pode digitá-lo para adicionar direto ao carrinho.</p>
+
+                    <p>Com itens na remessa aparece <strong>Imprimir etiquetas</strong>, que abre uma
+                    folha com uma etiqueta por exemplar — nome, código e preço — para recortar e
+                    colar. Dá para filtrar por <strong>fornecedor</strong> (a remessa chega em caixas
+                    separadas) e escolher entre <strong>só os disponíveis</strong> (o padrão) ou
+                    todos.</p>
+
+                    <div class="tip">💡 <strong>Colar etiqueta é opcional.</strong> Nada no app
+                    depende disso: sem etiqueta a mesa vende pelo título normalmente e o sistema
+                    escolhe o exemplar sozinho. A etiqueta só torna mais rápido digitar o código na
+                    venda e conferir a caixa no fechamento. Se não der tempo de colar, não perdeu
+                    nada.</div>
+
+                    <div class="tip">⚠️ <strong>O preço vai impresso.</strong> Se ainda for mexer nos
+                    preços da remessa, imprima depois — papel colado não se atualiza sozinho.</div>
                     <p><strong>Mudar a quantidade depois acerta o estoque:</strong></p>
                     <ul>
                         <li><strong>Aumentar</strong> → gera só os exemplares que faltam, seguindo a
@@ -881,8 +896,6 @@
                 <li><strong>Fechamento</strong> — acerto dos fornecedores e devolução do que não
                     vendeu. O resultado já é apurado e aparece no Painel; o passo formal de fechar
                     ainda não.</li>
-                <li><strong>Etiquetas para impressão</strong> — os códigos já são gerados na Remessa
-                    (<code>ECC001</code>…), mas a folha para imprimir ainda não sai daqui.</li>
                 <li><strong>Importar a planilha de inscrições</strong> — por enquanto os
                     participantes entram um a um pela tela de Inscritos.</li>
                 <li><strong>Formulário de inscrição no app</strong> — com perguntas montadas por

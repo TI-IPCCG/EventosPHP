@@ -18,7 +18,8 @@ use Livewire\Component;
 
 /**
  * Montar a remessa do evento: o que vem de cada fornecedor, quanto e a que
- * preço. Salvar já cria os EXEMPLARES com código — a etiqueta sai daqui.
+ * preço. Salvar já cria os EXEMPLARES com código; a folha de etiquetas sai
+ * daqui, mas colar é opcional — nada no app exige exemplar etiquetado.
  *
  * Sob consignação o erro caro não é encalhar: é levar de menos e esgotar antes
  * do fim. Por isso a tela mostra, ao lado de cada item, quanto ele girou no
@@ -565,6 +566,15 @@ class extends Component {
                         <div><span>Exemplares</span><strong>{{ $this->totais['exemplares'] }}</strong></div>
                         <div><span>Valor consignado</span><strong>R$ {{ number_format($this->totais['consignado'], 2, ',', '.') }}</strong></div>
                         <div><span>Se vender tudo</span><strong>R$ {{ number_format($this->totais['potencial'], 2, ',', '.') }}</strong></div>
+                    </div>
+
+                    {{-- Opcional, e o rótulo diz isso: nada no app exige que o
+                         exemplar esteja etiquetado. --}}
+                    <div class="card-acoes" style="margin-top:.9rem">
+                        <a class="btn btn-ghost btn-sm" target="_blank"
+                           href="{{ route('livraria.etiquetas', ['fornecedor' => $supplier_id]) }}">
+                            <i class="bi bi-tags"></i> Imprimir etiquetas (opcional)
+                        </a>
                     </div>
                 @endif
             </section>

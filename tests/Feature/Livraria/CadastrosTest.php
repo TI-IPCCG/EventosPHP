@@ -484,6 +484,98 @@ class CadastrosTest extends TestCase
             ->assertSet('preco_venda', '45.00');
     }
 
+    // ─────────────── etiquetas (opcional) ───────────────
+    //
+    // A folha existe para quem quiser colar. Nada no app depende dela: sem
+    // etiqueta a mesa vende pelo título e o sistema escolhe o exemplar. Por
+    // isso os testes cobrem a folha em si, e não algum fluxo que a exija.
+
+    public function test_a_folha_de_etiquetas_traz_uma_por_exemplar(): void
+    {
+        app(ShipmentService::class)->definirItem(
+            $this->remessa(), $this->livro('Livro A'), null, 3, 30, 45
+        );
+
+        $resposta = $this->actingAs($this->coordenador)->get(route('livraria.etiquetas'));
+
+        $resposta->assertOk()->assertSee('Livro A');
+
+        $p = $this->fornecedor->prefixo;
+        foreach (["{$p}001", "{$p}002", "{$p}003"] as $codigo) {
+            $resposta->assertSee($codigo);
+        }
+    }
+
+    public function test_a_etiqueta_mostra_o_preco_de_venda(): void
+    {
+        app(ShipmentService::class)->definirItem(
+            $this->remessa(), $this->livro('Livro A'), null, 1, 30, 45
+        );
+
+        $this->actingAs($this->coordenador)->get(route('livraria.etiquetas'))
+            ->assertOk()->assertSee('45,00');
+    }
+
+    /** O padrão é só o que está na prateleira — reimprimir não ressuscita vendido. */
+    public function test_por_padrao_a_folha_traz_so_os_disponiveis(): void
+    {
+        $item = app(ShipmentService::class)->definirItem(
+            $this->remessa(), $this->livro('Livro A'), null, 2, 30, 45
+        );
+
+        $vendido = Copy::where('shipment_item_id', $item->id)->orderBy('id')->first();
+        $vendido->update(['status' => Copy::VENDIDO]);
+
+        $this->actingAs($this->coordenador)->get(route('livraria.etiquetas'))
+            ->assertOk()->assertDontSee($vendido->codigo);
+
+        $this->actingAs($this->coordenador)->get(route('livraria.etiquetas', ['status' => 'todos']))
+            ->assertOk()->assertSee($vendido->codigo);
+    }
+
+    /** `status` vem da URL: valor estranho cai no padrão em vez de vazar tudo. */
+    public function test_status_desconhecido_cai_no_padrao(): void
+    {
+        $item = app(ShipmentService::class)->definirItem(
+            $this->remessa(), $this->livro('Livro A'), null, 2, 30, 45
+        );
+
+        $vendido = Copy::where('shipment_item_id', $item->id)->orderBy('id')->first();
+        $vendido->update(['status' => Copy::VENDIDO]);
+
+        $this->actingAs($this->coordenador)
+            ->get(route('livraria.etiquetas', ['status' => 'qualquer-coisa']))
+            ->assertOk()->assertDontSee($vendido->codigo);
+    }
+
+    public function test_a_folha_filtra_por_fornecedor(): void
+    {
+        app(ShipmentService::class)->definirItem(
+            $this->remessa(), $this->livro('Livro A'), null, 1, 30, 45
+        );
+
+        $outro = Supplier::create(['church_id' => 1, 'nome' => 'Outra Editora',
+            'prefixo' => bin2hex(random_bytes(2))]);
+
+        $this->actingAs($this->coordenador)
+            ->get(route('livraria.etiquetas', ['fornecedor' => $outro->id]))
+            ->assertOk()->assertDontSee($this->fornecedor->prefixo.'001');
+    }
+
+    public function test_imprimir_etiqueta_exige_permissao_de_remessa(): void
+    {
+        $perfil = SystemRole::create(['church_id' => 1, 'name' => 'Só vê '.uniqid()]);
+        $perfil->permissions()->sync(Permission::where('slug', 'livraria.ver')->pluck('id'));
+
+        $semRemessa = User::create(['name' => 'Curioso',
+            'email' => 'e'.uniqid().'@ipccg.org.br', 'password' => 'segredo123']);
+
+        Membership::create(['user_id' => $semRemessa->id, 'church_id' => 1,
+            'system_role_id' => $perfil->id, 'status' => true, 'created_at' => now()]);
+
+        $this->actingAs($semRemessa)->get(route('livraria.etiquetas'))->assertForbidden();
+    }
+
     public function test_item_com_variacao_exige_escolher_o_tamanho(): void
     {
         $camisa = Product::create(['church_id' => 1, 'category_id' => $this->catCamiseta->id,

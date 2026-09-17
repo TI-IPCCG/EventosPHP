@@ -29,8 +29,9 @@ use Livewire\Component;
  * mexe no acerto de um evento já fechado.
  *
  * ── POR QUE EXEMPLAR, E NÃO "3 UNIDADES DE X" ─────────────────────────
- * Quem sorteia tem o livro na mão, com a etiqueta. O código diz QUAL saiu, e
- * é isso que faz a conferência física do estoque bater no fim do evento.
+ * Quem sorteia tem o livro na mão. O código diz QUAL exemplar saiu, e é isso
+ * que faz a conferência física do estoque bater no fim do evento — com ou sem
+ * etiqueta colada, que é opcional (ver livraria/etiquetas).
  */
 new
 #[Layout('components.layouts.admin')]
