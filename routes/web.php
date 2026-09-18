@@ -161,8 +161,11 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/livraria/fornecedores', 'livraria.fornecedores')
         ->name('livraria.fornecedores')->middleware('can:livraria.catalogo');
 
+    // Consultar o catálogo é parte de ver a livraria — o voluntário de mesa
+    // precisa saber o que existe. Cadastrar e editar seguem em
+    // livraria.catalogo, checado dentro da tela em cada ação.
     Route::livewire('/livraria/catalogo', 'livraria.catalogo')
-        ->name('livraria.catalogo')->middleware('can:livraria.catalogo');
+        ->name('livraria.catalogo')->middleware('can:ver-livraria');
 
     Route::livewire('/livraria/categorias', 'livraria.categorias')
         ->name('livraria.categorias')->middleware('can:livraria.catalogo');

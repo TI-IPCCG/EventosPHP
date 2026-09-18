@@ -55,9 +55,14 @@ class extends Component {
 
     public $foto;
 
+    /**
+     * VER o catálogo é parte de ver a livraria; MEXER nele exige
+     * livraria.catalogo. O voluntário de mesa precisa saber o que existe —
+     * título, autor, preço de capa, foto — sem poder alterar nada.
+     */
     public function mount(): void
     {
-        abort_unless(auth()->user()->can('livraria.catalogo'), 403);
+        abort_unless(auth()->user()->can('ver-livraria'), 403);
 
         // Item veio pela URL (atalho do estoque, ou link salvo): carrega o
         // formulário já preenchido. Se o item não existe mais, abre em branco
@@ -301,8 +306,16 @@ class extends Component {
         $this->dispatch('toast', tipo: 'ok', mensagem: 'Foto adicionada.');
     }
 
+    /**
+     * ⚠ Estes dois não tinham guarda própria: a rota inteira exigia
+     * livraria.catalogo, então o buraco não era alcançável. Ao abrir a tela
+     * para quem só consulta, ele passaria a ser — dava para apagar foto por
+     * chamada direta, sem passar por botão nenhum.
+     */
     public function definirCapa(int $fotoId, PhotoService $fotos): void
     {
+        abort_unless(auth()->user()->can('livraria.catalogo'), 403);
+
         $fotos->definirCapa(ProductPhoto::findOrFail($fotoId));
         unset($this->fotos, $this->itens);
 
@@ -311,6 +324,8 @@ class extends Component {
 
     public function removerFoto(int $fotoId, PhotoService $fotos): void
     {
+        abort_unless(auth()->user()->can('livraria.catalogo'), 403);
+
         $fotos->remover(ProductPhoto::findOrFail($fotoId));
         unset($this->fotos, $this->itens);
 
@@ -324,15 +339,28 @@ class extends Component {
             <h1>Catálogo</h1>
             <p class="subtitulo">Itens permanentes, reaproveitados em todos os eventos.</p>
         </div>
-        <button type="button" class="btn-sm secondary" wire:click="novo">Novo item</button>
+        @can('livraria.catalogo')
+            <button type="button" class="btn-sm secondary" wire:click="novo">Novo item</button>
+        @endcan
     </header>
+
+    @cannot('livraria.catalogo')
+        {{-- Sem isto a tela pareceria quebrada: metade dela some e ninguém
+             explica por quê. --}}
+        <div class="alert warn" role="note">
+            <i class="bi bi-eye"></i>
+            Você está <strong>consultando</strong> o catálogo. Para cadastrar ou editar itens é
+            preciso a permissão <code>livraria.catalogo</code>.
+        </div>
+    @endcannot
 
     @if (session('ok'))
         <div class="alert ok" role="alert"><i class="bi bi-check-circle"></i> {{ session('ok') }}</div>
     @endif
 
-    <div class="cadastro-grid">
+    <div class="{{ auth()->user()->can('livraria.catalogo') ? 'cadastro-grid' : '' }}">
         {{-- ── formulário ── --}}
+        @can('livraria.catalogo')
         <section class="card">
             <h2 class="card-titulo">{{ $editando ? 'Editar item' : 'Novo item' }}</h2>
 
@@ -527,7 +555,9 @@ class extends Component {
             @endif
         </section>
 
-        {{-- ── lista ── --}}
+        @endcan
+
+        {{-- ── lista: para todo mundo que vê a livraria ── --}}
         <section class="card">
             <h2 class="card-titulo">Itens cadastrados</h2>
 
@@ -571,9 +601,13 @@ class extends Component {
                         @endif
                     </div>
 
-                    <button type="button" class="btn-sm secondary" wire:click="editar({{ $item->id }})">
-                        Editar
-                    </button>
+                    @can('livraria.catalogo')
+                        <div class="card-acoes">
+                            <button type="button" class="btn-sm secondary" wire:click="editar({{ $item->id }})">
+                                Editar
+                            </button>
+                        </div>
+                    @endcan
                 </div>
             @empty
                 <p class="vazio">Nenhum item ainda.</p>

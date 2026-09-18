@@ -739,6 +739,96 @@ class CadastrosTest extends TestCase
             ->assertSet('editando', null);
     }
 
+    // ────────── consultar o catálogo sem poder mexer nele ──────────
+    //
+    // Ver é parte de ver a livraria; editar exige livraria.catalogo. O
+    // voluntário de mesa precisa saber o que existe — título, autor, preço de
+    // capa, foto — e não pode alterar nada.
+
+    private function soConsulta(): User
+    {
+        $perfil = SystemRole::create(['church_id' => 1, 'name' => 'Consulta '.uniqid()]);
+        $perfil->permissions()->sync(Permission::where('slug', 'livraria.ver')->pluck('id'));
+
+        $u = User::create(['name' => 'Voluntário',
+            'email' => 'q'.uniqid().'@ipccg.org.br', 'password' => 'segredo123']);
+
+        Membership::create(['user_id' => $u->id, 'church_id' => 1,
+            'system_role_id' => $perfil->id, 'status' => true, 'created_at' => now()]);
+
+        return $u;
+    }
+
+    public function test_quem_so_ve_a_livraria_consulta_o_catalogo(): void
+    {
+        $this->livro('Livro Visível');
+
+        $this->actingAs($this->soConsulta())->get(route('livraria.catalogo'))
+            ->assertOk()
+            ->assertSee('Livro Visível')
+            ->assertSee('consultando');
+    }
+
+    public function test_quem_so_consulta_nao_ve_os_botoes_de_edicao(): void
+    {
+        $this->livro('Livro Visível');
+
+        Livewire::actingAs($this->soConsulta())->test('livraria.catalogo')
+            ->assertSee('Livro Visível')
+            ->assertDontSee('Novo item')
+            ->assertDontSee('wire:click="editar');
+    }
+
+    public function test_quem_so_consulta_nao_salva_item(): void
+    {
+        Livewire::actingAs($this->soConsulta())->test('livraria.catalogo')
+            ->set('category_id', $this->catLivro->id)
+            ->set('nome', 'Tentativa')
+            ->call('salvar')
+            ->assertForbidden();
+
+        $this->assertSame(0, Product::where('nome', 'Tentativa')->count());
+    }
+
+    /**
+     * definirCapa e removerFoto NÃO tinham guarda própria: a rota inteira
+     * exigia livraria.catalogo, então o buraco não era alcançável. Abrir a
+     * tela para quem só consulta tornaria possível apagar foto por chamada
+     * direta, sem passar por botão nenhum.
+     */
+    public function test_quem_so_consulta_nao_mexe_nas_fotos(): void
+    {
+        Storage::fake('public');
+
+        $produto = $this->livro('Com Foto');
+        $foto = app(PhotoService::class)->adicionar(
+            $produto, UploadedFile::fake()->image('capa.jpg', 800, 600)
+        );
+
+        $curioso = $this->soConsulta();
+
+        Livewire::actingAs($curioso)->test('livraria.catalogo')
+            ->call('removerFoto', $foto->id)->assertForbidden();
+
+        Livewire::actingAs($curioso)->test('livraria.catalogo')
+            ->call('definirCapa', $foto->id)->assertForbidden();
+
+        Livewire::actingAs($curioso)->test('livraria.catalogo')
+            ->call('enviarFoto')->assertForbidden();
+
+        $this->assertSame(1, $produto->photos()->count(), 'a foto tinha de continuar lá');
+    }
+
+    /** Categorias e Fornecedores continuam fechados: são configuração. */
+    public function test_quem_so_consulta_nao_entra_em_categorias_nem_fornecedores(): void
+    {
+        $curioso = $this->soConsulta();
+
+        $this->actingAs($curioso)->get(route('livraria.categorias'))->assertForbidden();
+        $this->actingAs($curioso)->get(route('livraria.fornecedores'))->assertForbidden();
+    }
+
+    /** Sem permissão NENHUMA da livraria, nem consultar. */
     public function test_sem_permissao_de_catalogo_recebe_403(): void
     {
         $intruso = User::create(['name' => 'X', 'email' => 'x'.uniqid().'@ipccg.org.br', 'password' => 'segredo123']);

@@ -158,12 +158,14 @@
                             </a>
                         @endcan
 
-                        @can('livraria.catalogo')
+                        @can('ver-livraria')
                             <a href="{{ route('livraria.catalogo') }}"
                                class="nav-item {{ request()->routeIs('livraria.catalogo') ? 'active' : '' }}">
                                 <i class="bi bi-journals nav-icon"></i><span>Catálogo</span>
                             </a>
+                        @endcan
 
+                        @can('livraria.catalogo')
                             <a href="{{ route('livraria.categorias') }}"
                                class="nav-item {{ request()->routeIs('livraria.categorias') ? 'active' : '' }}">
                                 <i class="bi bi-tags nav-icon"></i><span>Categorias</span>

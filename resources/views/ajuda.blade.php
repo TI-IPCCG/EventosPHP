@@ -191,6 +191,11 @@
             <p>Em <a href="{{ route('livraria.catalogo') }}">Catálogo</a> entram os itens que você
             vende. É <strong>permanente e reaproveitado entre eventos</strong>: o livro cadastrado
             hoje serve para o evento do ano que vem.</p>
+
+            <div class="tip">👀 <strong>Quem vê a livraria pode consultar o catálogo</strong> —
+            título, autor, preço de capa e foto — sem poder alterar nada. É útil para o voluntário
+            de mesa saber o que existe. Cadastrar e editar exigem
+            <code>livraria.catalogo</code>; nesse caso a tela abre só com a lista e avisa.</div>
             <ul>
                 <li><strong>Categoria</strong> primeiro — ela define os campos que o formulário vai
                     pedir logo abaixo.</li>
@@ -759,7 +764,9 @@
                 <li><code>eventos.ver</code> / <code>eventos.gerenciar</code> — ver os eventos /
                     criar, editar e encerrar</li>
                 <li><code>livraria.ver</code> — ver catálogo, saldo e relatórios</li>
-                <li><code>livraria.catalogo</code> — fornecedores, categorias e catálogo de itens</li>
+                <li><code>livraria.catalogo</code> — <strong>cadastrar e editar</strong>
+                    fornecedores, categorias e itens do catálogo. Só
+                    <strong>consultar</strong> o catálogo já vem com <code>livraria.ver</code></li>
                 <li><code>livraria.remessa</code> — montar remessas, lançar custos e definir preços</li>
                 <li><code>livraria.vender</code> — registrar vendas na mesa</li>
                 <li><code>livraria.corrigir</code> — corrigir, trocar itens e estornar venda já
