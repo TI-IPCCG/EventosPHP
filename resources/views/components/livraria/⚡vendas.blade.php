@@ -181,7 +181,8 @@ class extends Component {
                 'items.copy.shipmentItem.product',
                 'items.copy.shipmentItem.variant',
                 'paymentMethod',
-                'exchanges.paymentMethod',
+                'registradoPor', 'canceladaPor', 'corrigidaPor',
+                'exchanges.paymentMethod', 'exchanges.registradoPor',
             ])
             ->find($this->vendaId);
     }
@@ -525,6 +526,9 @@ class extends Component {
                     @if ($v->corrigida_em) <span class="pill warn">corrigida</span> @endif
                     <small class="bloco">
                         {{ $v->vendida_em?->format('d/m H:i') }}
+                        {{-- quem operou a mesa: é a primeira pergunta quando um
+                             lançamento parece estranho no fechamento --}}
+                        @if ($v->registradoPor) · por {{ $v->registradoPor->name }} @endif
                         · {{ $v->paymentMethod?->nome ?? 'sem forma' }}
                         · {{ $v->itens_count }} {{ $v->itens_count == 1 ? 'item' : 'itens' }}
                         @if ($v->comprador) · {{ $v->comprador }} @endif
@@ -581,6 +585,24 @@ class extends Component {
                         </div>
                     @endif
 
+                    {{-- Quem fez o quê. Estava tudo no banco e em lugar nenhum
+                         da tela: descobrir quem estornou exigia SQL na mão. --}}
+                    <p class="venda-dica" style="margin-top:.4rem">
+                        @if ($this->venda->registradoPor)
+                            Registrada por <strong>{{ $this->venda->registradoPor->name }}</strong>.
+                        @else
+                            Registrada por um usuário que não está mais no sistema.
+                        @endif
+                        @if ($this->venda->corrigida_em)
+                            · Corrigida em {{ $this->venda->corrigida_em->format('d/m H:i') }}
+                            @if ($this->venda->corrigidaPor) por <strong>{{ $this->venda->corrigidaPor->name }}</strong>@endif.
+                        @endif
+                        @if ($this->venda->cancelada_em)
+                            · Estornada em {{ $this->venda->cancelada_em->format('d/m H:i') }}
+                            @if ($this->venda->canceladaPor) por <strong>{{ $this->venda->canceladaPor->name }}</strong>@endif.
+                        @endif
+                    </p>
+
                     @if ($this->venda->exchanges->isNotEmpty())
                         {{-- A explicação do caixa: o valor pago não é o valor dos
                              itens quando houve troca, e essa linha é o porquê. --}}
@@ -596,6 +618,7 @@ class extends Component {
                                 <li wire:key="x-{{ $troca->id }}">
                                     <span>
                                         Troca em {{ $troca->realizada_em?->format('d/m H:i') }}
+                                        @if ($troca->registradoPor) · por {{ $troca->registradoPor->name }} @endif
                                         @if ($troca->paymentMethod) · {{ $troca->paymentMethod->nome }} @endif
                                         @if ($troca->motivo) <small class="codigo">{{ $troca->motivo }}</small> @endif
                                     </span>

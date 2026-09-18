@@ -53,6 +53,11 @@ class Writeoff extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
+    public function canceladaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelada_por');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(WriteoffItem::class, 'writeoff_id');

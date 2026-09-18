@@ -368,6 +368,32 @@ class TelaDeBaixasTest extends TestCase
         $this->assertSame(Copy::DISPONIVEL, Copy::find($this->copies['B1']->id)->status);
     }
 
+    /**
+     * Dois nomes, e a diferença importa: quem AUTORIZOU decidiu (texto livre,
+     * pode não ter login nenhum) e quem REGISTROU foi ao app e lançou.
+     */
+    public function test_a_lista_mostra_quem_autorizou_e_quem_lancou(): void
+    {
+        $this->coordenador->update(['name' => 'Quem Lançou']);
+        $this->darBaixa(['B1']);
+
+        $this->tela()
+            ->assertSee('autorizado por Pr. Fulano')
+            ->assertSee('Quem Lançou');
+    }
+
+    public function test_a_lista_mostra_quem_cancelou(): void
+    {
+        $this->darBaixa(['B1']);
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->coordenador->update(['name' => 'Quem Cancelou']);
+
+        $this->tela()->call('cancelar', $baixa->id)
+            ->assertSee('Cancelada em')
+            ->assertSee('Quem Cancelou');
+    }
+
     // ─────────────────────────── permissões ───────────────────────────
 
     /**

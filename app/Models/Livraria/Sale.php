@@ -60,6 +60,23 @@ class Sale extends Model
         return $this->belongsTo(User::class, 'registrado_por');
     }
 
+    /**
+     * Quem desfez, e quem reescreveu.
+     *
+     * As colunas existiam desde sempre e nunca tiveram relação — então a
+     * pergunta que se faz no fechamento ("quem estornou a #142?") só era
+     * respondível com SQL na mão.
+     */
+    public function canceladaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelada_por');
+    }
+
+    public function corrigidaPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'corrigida_por');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class, 'sale_id');

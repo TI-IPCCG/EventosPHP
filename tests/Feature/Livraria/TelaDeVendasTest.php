@@ -101,12 +101,13 @@ class TelaDeVendasTest extends TestCase
         }
     }
 
-    private function vender(array $codigos): Sale
+    private function vender(array $codigos, ?User $quem = null): Sale
     {
         return app(SaleService::class)->registrar(
             $this->evento->id,
             array_map(fn ($c) => $this->copies[$c]->id, $codigos),
             $this->pix->id,
+            registradoPor: $quem?->id,
         );
     }
 
@@ -194,6 +195,60 @@ class TelaDeVendasTest extends TestCase
         $r = $this->tela()->set('ordem', "id'; DROP TABLE liv_sales; --")->instance()->vendas;
 
         $this->assertSame(1, $r->total());
+    }
+
+    // ────────────────── quem fez o quê ──────────────────
+    //
+    // As colunas existiam desde o início e nunca apareciam na tela: o
+    // relacionamento era até carregado no eager load, e descartado. Descobrir
+    // quem operou a mesa numa venda estranha exigia SQL na mão.
+
+    public function test_a_lista_mostra_quem_registrou_a_venda(): void
+    {
+        $vendedor = $this->pessoaCom(['livraria.ver', 'livraria.vender']);
+        $vendedor->update(['name' => 'Marta da Mesa']);
+
+        $this->vender(['VA001'], $vendedor);
+
+        $this->tela()->assertSee('Marta da Mesa');
+    }
+
+    public function test_o_detalhe_mostra_quem_estornou(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $this->coordenador->update(['name' => 'Coord Responsável']);
+
+        $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('estornar')
+            ->assertSee('Estornada em')
+            ->assertSee('Coord Responsável');
+    }
+
+    public function test_o_detalhe_mostra_quem_corrigiu(): void
+    {
+        $venda = $this->vender(['VA001']);
+
+        $this->coordenador->update(['name' => 'Quem Corrigiu']);
+
+        $this->tela()
+            ->call('abrir', $venda->id)
+            ->call('abrirCorrecao')
+            ->call('salvarCorrecao')
+            ->call('abrir', $venda->id)
+            ->assertSee('Corrigida em')
+            ->assertSee('Quem Corrigiu');
+    }
+
+    /** O usuário pode ter sido removido — FK é SET NULL, e a tela não pode sumir. */
+    public function test_venda_sem_usuario_conhecido_nao_quebra_a_tela(): void
+    {
+        $venda = $this->vender(['VA001']);       // registrado_por fica NULL
+
+        $this->tela()->call('abrir', $venda->id)
+            ->assertOk()
+            ->assertSee('não está mais no sistema');
     }
 
     // ─────────────────────────── permissões ───────────────────────────

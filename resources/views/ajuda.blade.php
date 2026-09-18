@@ -405,6 +405,11 @@
             <p>Toque em <strong>Detalhes</strong> para ver a venda inteira: o que foi pago, os itens
             de hoje, o que já saiu (e por quê) e o histórico de trocas.</p>
 
+            <p><strong>Quem fez o quê aparece na tela.</strong> A lista mostra o voluntário que
+            registrou cada venda, e o detalhe mostra também quem <strong>corrigiu</strong>, quem
+            <strong>estornou</strong> e quem lançou cada <strong>troca</strong>, com data e hora.
+            É a primeira pergunta quando um lançamento parece estranho no fechamento.</p>
+
             <div class="tip">⚠️ <strong>Corrigir e Trocar não são a mesma coisa</strong>, e escolher
             errado desencontra o relatório do extrato do banco. A pergunta que decide é:
             <strong>alguém trocou alguma coisa de verdade?</strong></div>
@@ -498,7 +503,9 @@
                 <li><strong>Motivo</strong> → é ele que decide se a saída <strong>gera custo</strong>
                     (veja abaixo);</li>
                 <li><strong>Autorizado por</strong> → quem decidiu. Texto livre, porque quem
-                    autoriza nem sempre tem login: pode ser o preletor ou o pastor;</li>
+                    autoriza nem sempre tem login: pode ser o preletor ou o pastor. Separado disso,
+                    a lista registra sozinha <strong>quem lançou no app</strong> — são duas
+                    perguntas diferentes;</li>
                 <li><strong>Observação</strong> → opcional ("sorteio de sábado", "capa molhada");</li>
                 <li><strong>Exemplares</strong> → toque no item e escolha quais saíram.
                     Uma baixa leva <strong>vários</strong>: sortear três livros informa motivo e

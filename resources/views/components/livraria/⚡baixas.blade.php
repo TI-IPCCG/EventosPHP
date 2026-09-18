@@ -148,7 +148,8 @@ class extends Component {
         }
 
         return Writeoff::where('event_id', $this->evento->id)
-            ->with(['reason', 'registradoPor', 'items.copy.shipmentItem.product', 'items.copy.shipmentItem.variant'])
+            ->with(['reason', 'registradoPor', 'canceladaPor',
+                    'items.copy.shipmentItem.product', 'items.copy.shipmentItem.variant'])
             ->withCount('items')
             ->tap(fn ($q) => $this->ordem === 'antigas'
                 ? $q->orderBy('registrada_em')->orderBy('id')
@@ -440,8 +441,18 @@ class extends Component {
                         <small class="bloco">
                             {{ $b->registrada_em?->format('d/m H:i') }}
                             · {{ $b->items_count }} {{ $b->items_count == 1 ? 'exemplar' : 'exemplares' }}
+                            {{-- dois nomes distintos, e a diferença importa: quem
+                                 AUTORIZOU decidiu (texto livre, pode não ter login);
+                                 quem REGISTROU foi ao app e lançou. --}}
                             · autorizado por {{ $b->autorizado_por }}
+                            @if ($b->registradoPor) · lançado por {{ $b->registradoPor->name }} @endif
                         </small>
+                        @if ($b->cancelada_em)
+                            <small class="bloco">
+                                Cancelada em {{ $b->cancelada_em->format('d/m H:i') }}
+                                @if ($b->canceladaPor) por {{ $b->canceladaPor->name }} @endif
+                            </small>
+                        @endif
                         <small class="bloco">
                             @foreach ($b->items as $i)
                                 <span class="codigo">{{ $i->copy?->codigo }}</span>
