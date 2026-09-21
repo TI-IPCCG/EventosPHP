@@ -634,17 +634,22 @@ class TelaDeVendaTest extends TestCase
 
     // ─────────────── saldo por tamanho ───────────────
 
-    public function test_cada_tamanho_mostra_o_proprio_saldo(): void
+    /**
+     * Cada tamanho diz se DÁ para levar, não quantos restam.
+     *
+     * O número exato não muda a decisão de quem consulta — e numa página
+     * pública ele ainda vira pressão ("só tem 1!") e envelhece a cada venda.
+     */
+    public function test_cada_tamanho_diz_se_esta_disponivel(): void
     {
-        // o cenário tem 2 exemplares no M e 1 no G
         $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
             ->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression('/<b>M<\/b>\s*<span class="qtd">\s*2/', $html);
-        $this->assertMatchesRegularExpression('/<b>G<\/b>\s*<span class="qtd">\s*1/', $html);
+        $this->assertMatchesRegularExpression('/<b>M<\/b>\s*<span class="estado">\s*Disponível/u', $html);
+        $this->assertStringNotContainsString('class="qtd"', $html, 'a quantidade não deve aparecer');
     }
 
-    public function test_tamanho_esgotado_aparece_marcado_e_nao_sumido(): void
+    public function test_tamanho_indisponivel_aparece_marcado_e_nao_sumido(): void
     {
         $this->copies['CG001']->update(['status' => Copy::VENDIDO]);
 
@@ -652,7 +657,44 @@ class TelaDeVendaTest extends TestCase
             ->assertOk()->getContent();
 
         $this->assertStringContainsString('<b>G</b>', $html, 'o tamanho continua listado');
-        $this->assertMatchesRegularExpression('/<b>G<\/b>\s*<span class="qtd">\s*esgotado/', $html);
+        $this->assertMatchesRegularExpression('/<b>G<\/b>\s*<span class="estado">\s*Indisponível/u', $html);
+    }
+
+    // ─────────────────── busca no cardápio ───────────────────
+
+    public function test_o_cardapio_traz_o_campo_de_busca(): void
+    {
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()
+            ->assertSee('id="busca"', escape: false)
+            ->assertSee('Buscar por título, autor ou tamanho');
+    }
+
+    /**
+     * O texto pesquisável é normalizado no SERVIDOR (minúsculo, sem acento):
+     * assim o JS só compara strings, e buscar "simposio" acha "Simpósio" sem o
+     * celular normalizar a lista inteira a cada tecla.
+     */
+    public function test_cada_item_carrega_o_texto_de_busca_normalizado(): void
+    {
+        $this->estocarPrecosVariados(1);
+
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-busca="camiseta simposio', $html);
+        $this->assertStringNotContainsString('data-busca="Camiseta', $html, 'deveria estar em minúsculo');
+    }
+
+    /** O tamanho entra na busca: procurar "GG" tem de achar a camiseta. */
+    public function test_o_texto_de_busca_inclui_os_tamanhos(): void
+    {
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/data-busca="[^"]*\bm g\b/', $html);
     }
 
     /** Dentro da categoria, o que dá para levar vem primeiro. */

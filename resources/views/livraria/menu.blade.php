@@ -208,14 +208,16 @@
             font-size: 11px; letter-spacing: .04em;
         }
         .tam b { font-weight: 700; font-size: 12px; }
-        .tam .qtd { color: var(--fraco); }
-        .tam.zero { border-style: dashed; opacity: .5; }
-        .tam.zero .qtd { color: #A33; }
+        .tam .estado { color: var(--fraco); font-size: 10px; }
+        .tam.zero { border-style: dashed; opacity: .55; }
+        .tam.zero .estado { color: #A33; }
 
+        /* Item sem variação: a mesma informação, sem a caixa do tamanho. */
         .saldo {
-            font-size: 11px; color: var(--fraco);
-            display: block; margin-top: 3px;
+            font-size: 11px; display: block; margin-top: 4px;
+            color: var(--fraco);
         }
+        .saldo.fora { color: #A33; }
         .filete {
             flex: 1 1 auto;
             border-bottom: 1px dotted #BFC6BD;
@@ -252,9 +254,29 @@
         a.voltar, select { background: #fff; color: var(--verde); }
         .vazio { text-align: center; color: var(--fraco); padding: 30px 0; }
 
+        /* ── busca ──
+           Filtra no próprio navegador: a lista tem dezenas de itens, e uma ida
+           ao servidor a cada letra seria lenta justamente no 4G do evento, que
+           é onde a página vai ser aberta. */
+        .busca { position: relative; margin-bottom: 16px; }
+        .busca input {
+            width: 100%; padding: 11px 38px 11px 14px;
+            font-family: Arial, Helvetica, sans-serif; font-size: 15px;
+            border: 1px solid var(--linha); border-radius: 8px;
+            color: var(--tinta); background: #fff;
+        }
+        .busca input:focus { outline: 2px solid var(--verde); outline-offset: -1px; }
+        .busca .limpar {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            border: 0; background: none; color: var(--fraco);
+            font-size: 18px; line-height: 1; padding: 6px 8px; cursor: pointer;
+        }
+        .sem-resultado { display: none; text-align: center; color: var(--fraco); padding: 26px 0; }
+        [hidden] { display: none !important; }
+
         @media print {
             body { padding: 0; }
-            .acoes { display: none; }
+            .acoes, .busca { display: none; }
             /* o título repete se o cardápio passar de uma folha */
             .item { page-break-inside: avoid; }
             .secao { page-break-after: avoid; }
@@ -288,11 +310,28 @@
         @endif
         <div class="regua"></div>
 
+        @if ($itens->isNotEmpty())
+            <div class="busca">
+                <input type="search" id="busca" autocomplete="off"
+                       placeholder="Buscar por título, autor ou tamanho"
+                       aria-label="Buscar no cardápio">
+                <button type="button" class="limpar" id="limpar" hidden aria-label="Limpar busca">✕</button>
+            </div>
+        @endif
+
         @forelse ($itens as $categoria => $doGrupo)
-            <div class="secao">{{ $categoria }}</div>
+            <div class="secao" data-secao="{{ $categoria }}">{{ $categoria }}</div>
 
             @foreach ($doGrupo as $i)
-                <div class="item {{ $i->esgotado ? 'fora' : '' }}">
+                {{-- O texto pesquisável é montado e NORMALIZADO no servidor:
+                     assim o JS só compara strings, e buscar "simposio" acha
+                     "Simpósio" sem o celular ter de normalizar a lista toda a
+                     cada tecla. --}}
+                <div class="item {{ $i->esgotado ? 'fora' : '' }}"
+                     data-secao="{{ $categoria }}"
+                     data-busca="{{ Str::lower(Str::ascii(
+                         $i->nome.' '.$i->detalhe.' '.$categoria.' '.$i->tamanhos->pluck('nome')->join(' ')
+                     )) }}">
                     @if ($comCapa)
                         @if ($i->capa)
                             <img class="capa" src="{{ $i->capa->urlThumb() }}" alt="">
@@ -311,25 +350,21 @@
                                 @foreach ($i->tamanhos as $t)
                                     <span class="tam {{ $t->qtd === 0 ? 'zero' : '' }}">
                                         <b>{{ $t->nome }}</b>
-                                        <span class="qtd">
-                                            {{ $t->qtd === 0 ? 'esgotado' : $t->qtd }}
+                                        <span class="estado">
+                                            {{ $t->qtd === 0 ? 'Indisponível' : 'Disponível' }}
                                         </span>
                                     </span>
                                 @endforeach
                             </span>
-                        @elseif (! $i->esgotado)
-                            <span class="saldo">
-                                {{ $i->disponiveis }}
-                                {{ $i->disponiveis == 1 ? 'disponível' : 'disponíveis' }}
+                        @else
+                            <span class="saldo {{ $i->esgotado ? 'fora' : '' }}">
+                                {{ $i->esgotado ? 'Indisponível' : 'Disponível' }}
                             </span>
                         @endif
                     </span>
 
                     <span class="filete"></span>
 
-                    @if ($i->esgotado)
-                        <span class="esgotado">esgotado</span>
-                    @endif
                     <span class="preco">R$ {{ number_format($i->preco, 2, ',', '.') }}</span>
                 </div>
             @endforeach
@@ -343,6 +378,8 @@
             </p>
         @endforelse
 
+        <p class="sem-resultado" id="sem-resultado">Nada encontrado.</p>
+
         @if ($itens->isNotEmpty())
             <div class="rodape">
                 Preços sujeitos à disponibilidade ·
@@ -350,5 +387,52 @@
             </div>
         @endif
     </div>
+
+    @if ($itens->isNotEmpty())
+    <script>
+        (function () {
+            const campo   = document.getElementById('busca');
+            const limpar  = document.getElementById('limpar');
+            const nada    = document.getElementById('sem-resultado');
+            const itens   = Array.from(document.querySelectorAll('.item'));
+            const secoes  = Array.from(document.querySelectorAll('.secao'));
+
+            // mesma normalização do servidor: minúsculo e sem acento
+            const limpa = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+            function filtrar() {
+                const termo = limpa(campo.value);
+                let achou = 0;
+
+                itens.forEach((el) => {
+                    const casa = termo === '' || el.dataset.busca.includes(termo);
+                    el.hidden = ! casa;
+                    if (casa) achou++;
+                });
+
+                // seção sem nenhum item visível some junto — senão sobra um
+                // título de categoria sobre o vazio
+                secoes.forEach((s) => {
+                    s.hidden = ! itens.some((el) => el.dataset.secao === s.dataset.secao && ! el.hidden);
+                });
+
+                nada.style.display = achou === 0 ? 'block' : 'none';
+                limpar.hidden = campo.value === '';
+            }
+
+            campo.addEventListener('input', filtrar);
+            limpar.addEventListener('click', () => { campo.value = ''; campo.focus(); filtrar(); });
+
+            // Imprimir com a busca ativa sairia com metade do cardápio: o que
+            // vai para o papel é sempre a lista inteira.
+            window.addEventListener('beforeprint', () => {
+                itens.forEach((el) => { el.hidden = false; });
+                secoes.forEach((s) => { s.hidden = false; });
+                nada.style.display = 'none';
+            });
+            window.addEventListener('afterprint', filtrar);
+        })();
+    </script>
+    @endif
 </body>
 </html>
