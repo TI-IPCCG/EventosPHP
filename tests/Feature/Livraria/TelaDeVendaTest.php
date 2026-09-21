@@ -460,21 +460,34 @@ class TelaDeVendaTest extends TestCase
 
         $this->assertSame(1, substr_count($html, 'Camiseta Simpósio'),
             'as duas variações deveriam ocupar uma linha só');
-        $this->assertStringContainsString('M · G', $html);
+
+        // e os tamanhos aparecem dentro dela, cada um com o seu saldo
+        $this->assertStringContainsString('<b>M</b>', $html);
+        $this->assertStringContainsString('<b>G</b>', $html);
+        $this->assertLessThan(
+            mb_strpos($html, '<b>G</b>'),
+            mb_strpos($html, '<b>M</b>'),
+            'a ordem é a do catálogo (M antes de G), não a alfabética'
+        );
     }
 
-    /** Cartaz de parede mostra o que dá para comprar. */
-    public function test_por_padrao_o_cardapio_esconde_o_esgotado(): void
+    /**
+     * O esgotado é MARCADO, não escondido: saber que o título existe e acabou
+     * é diferente de nunca ter ouvido falar dele — e quem monta a parede ainda
+     * pode pedir a lista enxuta.
+     */
+    public function test_o_esgotado_aparece_marcado_e_pode_ser_escondido(): void
     {
         foreach ($this->copies as $copy) {
             $copy->update(['status' => Copy::VENDIDO]);
         }
 
         $this->actingAs($this->voluntario)->get(route('livraria.menu'))
-            ->assertOk()->assertDontSee('Camiseta Simpósio');
-
-        $this->actingAs($this->voluntario)->get(route('livraria.menu', ['itens' => 'todos']))
             ->assertOk()->assertSee('Camiseta Simpósio')->assertSee('esgotado');
+
+        $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['itens' => 'so_disponiveis']))
+            ->assertOk()->assertDontSee('Camiseta Simpósio');
     }
 
     /**
@@ -528,6 +541,122 @@ class TelaDeVendaTest extends TestCase
             'status' => true, 'created_at' => now()]);
 
         $this->actingAs($estranho)->get(route('livraria.menu'))->assertForbidden();
+    }
+
+    // ─────────────── cardápio público (sem login) ───────────────
+    //
+    // ⚠ session()->flush() em TODOS estes testes, e não é zelo: o setUp grava
+    // church_id/event_id na sessão, e sem limpar o ChurchScope continuaria
+    // resolvendo tudo direitinho — o teste passaria verde enquanto a página
+    // real, aberta por quem nunca logou, viria vazia. Foi assim que a
+    // credencial pública passou nos testes e quebrou em produção.
+
+    public function test_o_cardapio_publico_abre_sem_login(): void
+    {
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()
+            ->assertSee('Camiseta Simpósio')
+            ->assertSee('Simpósio');
+    }
+
+    public function test_o_cardapio_publico_acha_o_evento_sem_sessao(): void
+    {
+        session()->flush();
+
+        // o preço vem da remessa: se o escopo tivesse zerado a lista, não
+        // haveria preço nenhum para ver
+        $this->get(route('livraria.cardapio'))->assertOk()->assertSee('40,00');
+    }
+
+    /** O que é público é o que já estaria na parede — nada além disso. */
+    public function test_o_cardapio_publico_nao_expoe_custo_nem_fornecedor(): void
+    {
+        session()->flush();
+
+        $html = $this->get(route('livraria.cardapio'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('20,00', $html, 'custo unitário não pode aparecer');
+        $this->assertStringNotContainsString('Fornecedor', $html);
+    }
+
+    public function test_o_cardapio_publico_nao_mostra_os_controles_do_operador(): void
+    {
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()
+            ->assertDontSee('Voltar à venda')
+            ->assertDontSee('window.print()', escape: false);
+    }
+
+    /** Link para mandar no grupo, não página para o Google guardar. */
+    public function test_o_cardapio_publico_pede_para_nao_ser_indexado(): void
+    {
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()->assertSee('name="robots" content="noindex"', escape: false);
+    }
+
+    /**
+     * ⚠ Encerra TODOS os eventos em andamento, não só o do cenário: o visitante
+     * não tem congregação na sessão, então a busca corre sem o ChurchScope e
+     * alcança evento de qualquer igreja — inclusive os que já estão no banco.
+     * É a mesma propriedade que faz a página funcionar deslogada.
+     */
+    public function test_sem_evento_em_andamento_o_publico_ve_um_aviso(): void
+    {
+        \App\Models\Event::withoutGlobalScopes()->emAndamento()
+            ->update(['status' => 'encerrado']);
+
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()->assertSee('Nenhum evento em andamento');
+    }
+
+    // ─────────────── saldo por tamanho ───────────────
+
+    public function test_cada_tamanho_mostra_o_proprio_saldo(): void
+    {
+        // o cenário tem 2 exemplares no M e 1 no G
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<b>M<\/b>\s*<span class="qtd">\s*2/', $html);
+        $this->assertMatchesRegularExpression('/<b>G<\/b>\s*<span class="qtd">\s*1/', $html);
+    }
+
+    public function test_tamanho_esgotado_aparece_marcado_e_nao_sumido(): void
+    {
+        $this->copies['CG001']->update(['status' => Copy::VENDIDO]);
+
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('<b>G</b>', $html, 'o tamanho continua listado');
+        $this->assertMatchesRegularExpression('/<b>G<\/b>\s*<span class="qtd">\s*esgotado/', $html);
+    }
+
+    /** Dentro da categoria, o que dá para levar vem primeiro. */
+    public function test_o_esgotado_desce_para_o_fim_da_lista(): void
+    {
+        $this->estocarPrecosVariados(2);        // Livro 01 e Livro 02
+
+        $livro01 = \App\Models\Livraria\Product::where('nome', 'Livro 01')->first();
+        Copy::whereHas('shipmentItem', fn ($q) => $q->where('product_id', $livro01->id))
+            ->update(['status' => Copy::VENDIDO]);
+
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertGreaterThan(
+            mb_strpos($html, 'Livro 02'),
+            mb_strpos($html, 'Livro 01'),
+            'o esgotado deveria vir depois do que está disponível'
+        );
     }
 
     /** Outro voluntário vendeu entre a busca e o toque: avisa, não falha calado. */

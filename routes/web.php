@@ -57,6 +57,19 @@ Route::get('/credencial/{token}', function (string $token) {
 // componente. Quem libera é o responsável, hoje pelo banco.
 Route::livewire('/cadastro', 'auth.cadastro')->name('registrar');
 
+/*
+ | CARDÁPIO PÚBLICO — sem login, para o participante consultar no celular.
+ |
+ | O que sai daqui é o que já estaria colado na parede: item, autor, preço e
+ | saldo. NÃO expõe custo, fornecedor, margem, nem pessoa nenhuma — e vale
+ | conferir isso a cada mudança na view, porque é a única página da livraria
+ | que qualquer um alcança.
+ |
+ | Fica fora do grupo `auth` de propósito, e por isso a view resolve o evento
+ | sem depender de sessão (ver o comentário lá).
+ */
+Route::view('/cardapio', 'livraria.menu')->name('livraria.cardapio');
+
 // Recuperação de senha. Os nomes password.request/password.reset são os que o
 // Laravel usa por convenção — mantidos para não surpreender quem conhece.
 Route::livewire('/esqueci-senha', 'auth.esqueci-senha')->name('password.request');
