@@ -413,6 +413,12 @@ class extends Component {
         <div>
             <span class="venda-evento">{{ $this->evento->nome }}</span>
             <h1>Venda</h1>
+            {{-- Sai do estoque real, então reimprimir já traz o que mudou na
+                 remessa — não é lista de preços paralela para envelhecer. --}}
+            <a class="btn btn-ghost btn-sm venda-menu-link" target="_blank"
+               href="{{ route('livraria.menu') }}">
+                <i class="bi bi-printer"></i> Imprimir cardápio
+            </a>
         </div>
         <div class="venda-total" aria-live="polite">
             <span>Total</span>

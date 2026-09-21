@@ -368,6 +368,20 @@
             sistema</strong>.</p>
             <p><strong>Identificar o comprador é opcional</strong> — nome e documento, úteis quando
             alguém leva para pagar depois ou pediu reserva.</p>
+            <p>No alto da tela há <strong>Imprimir cardápio</strong>: uma folha com os itens e
+            preços para colar na parede do ponto de venda, agrupada por categoria. Ela sai do
+            <strong>estoque de verdade</strong> — reimprimir já traz o que mudou na remessa, e não
+            existe lista de preços paralela para envelhecer.</p>
+            <ul>
+                <li>Por padrão mostra <strong>só o que tem em estoque</strong>; dá para incluir
+                    todos os itens da remessa, e aí o que acabou aparece marcado como
+                    <strong>esgotado</strong>.</li>
+                <li><strong>Com capas</strong> ou só a lista — a versão sem capas rende mais itens
+                    por folha.</li>
+                <li>Variações do mesmo preço viram <strong>uma linha só</strong>
+                    (“Camiseta · P · M · G”), na ordem que você definiu no catálogo.</li>
+            </ul>
+
             <p>A <strong>capa do item aparece no carrinho e na confirmação</strong>: na mesa você
             confere pela imagem, não pelo texto — é a última chance de pegar o item errado antes
             de gravar. Item sem foto cadastrada entra do mesmo jeito.</p>

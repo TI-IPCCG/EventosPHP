@@ -436,6 +436,100 @@ class TelaDeVendaTest extends TestCase
         $this->assertCount(1, $carrinho);
     }
 
+    // ─────────────────── cardápio para a parede ───────────────────
+
+    public function test_o_cardapio_lista_o_que_esta_em_estoque(): void
+    {
+        $this->estocarPrecosVariados(3);
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()
+            ->assertSee('Livro 01')
+            ->assertSee('10,00')
+            ->assertSee('Camiseta Simpósio');
+    }
+
+    /**
+     * Camiseta P, M e G pelo mesmo preço é UMA linha ("P · M · G"), não três
+     * iguais: quem lê na parede quer saber o que custa quanto.
+     */
+    public function test_variacoes_do_mesmo_preco_viram_uma_linha_so(): void
+    {
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Camiseta Simpósio'),
+            'as duas variações deveriam ocupar uma linha só');
+        $this->assertStringContainsString('M · G', $html);
+    }
+
+    /** Cartaz de parede mostra o que dá para comprar. */
+    public function test_por_padrao_o_cardapio_esconde_o_esgotado(): void
+    {
+        foreach ($this->copies as $copy) {
+            $copy->update(['status' => Copy::VENDIDO]);
+        }
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->assertDontSee('Camiseta Simpósio');
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu', ['itens' => 'todos']))
+            ->assertOk()->assertSee('Camiseta Simpósio')->assertSee('esgotado');
+    }
+
+    /**
+     * O evento guarda um nome só; o cartaz quer título e lema com pesos
+     * diferentes. A última parte depois de " - " vira o lema.
+     */
+    public function test_o_nome_do_evento_vira_titulo_e_lema(): void
+    {
+        $this->evento->update(['nome' => 'Simpósio Doutrina & Vida - Teologia na Prática']);
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()
+            ->assertSee('Simpósio Doutrina &amp; Vida', escape: false)
+            ->assertSee('Teologia na Prática');
+    }
+
+    /** Nome sem hífen fica inteiro no título, sem lema inventado embaixo. */
+    public function test_nome_sem_hifen_nao_ganha_lema(): void
+    {
+        $this->evento->update(['nome' => 'Encontro de Jovens']);
+
+        $html = $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->getContent();
+
+        $this->assertStringContainsString('Encontro de Jovens', $html);
+        $this->assertStringNotContainsString('class="lema"', $html);
+    }
+
+    public function test_as_capas_so_entram_quando_pedidas(): void
+    {
+        $produto = ShipmentItem::find($this->copies['CM001']->shipment_item_id)->product;
+
+        \App\Models\Livraria\ProductPhoto::create([
+            'product_id' => $produto->id, 'caminho' => 'livraria/x/capa.jpg',
+            'caminho_thumb' => 'livraria/x/capa-thumb.jpg', 'capa' => true,
+            'ordem' => 1, 'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu'))
+            ->assertOk()->assertDontSee('capa-thumb.jpg');
+
+        $this->actingAs($this->voluntario)->get(route('livraria.menu', ['capas' => '1']))
+            ->assertOk()->assertSee('capa-thumb.jpg');
+    }
+
+    public function test_o_cardapio_exige_ver_a_livraria(): void
+    {
+        $estranho = User::create(['name' => 'X', 'email' => 'm'.uniqid().'@ipccg.org.br',
+            'password' => 'segredo123']);
+        Membership::create(['user_id' => $estranho->id, 'church_id' => 1,
+            'status' => true, 'created_at' => now()]);
+
+        $this->actingAs($estranho)->get(route('livraria.menu'))->assertForbidden();
+    }
+
     /** Outro voluntário vendeu entre a busca e o toque: avisa, não falha calado. */
     public function test_exemplar_vendido_por_outro_avisa_em_vez_de_estourar(): void
     {

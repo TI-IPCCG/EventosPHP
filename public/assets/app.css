@@ -2231,3 +2231,8 @@ body:has(.venda-fab) .toasts { top: 76px }
 
 /* na confirmação o nome e a capa andam juntos, à esquerda do valor */
 .resumo-item-nome { display: flex; align-items: center; gap: .6rem; min-width: 0 }
+
+/* Atalho para o cardápio, no cabeçalho da mesa. Fica abaixo do título e não
+   ao lado, porque o cabeçalho já divide a largura com o total — e o total é o
+   que não pode encolher. */
+.venda-menu-link { margin-top: .5rem; text-decoration: none }

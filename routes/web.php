@@ -176,4 +176,9 @@ Route::middleware('auth')->group(function () {
     // Folha de etiquetas: opcional, sem trava nenhuma no resto do app.
     Route::view('/livraria/etiquetas', 'livraria.etiquetas')
         ->name('livraria.etiquetas')->middleware('can:livraria.remessa');
+
+    // Cardápio para a parede: quem opera a mesa imprime, então basta ver a
+    // livraria — não é ato de gestão.
+    Route::view('/livraria/menu', 'livraria.menu')
+        ->name('livraria.menu')->middleware('can:ver-livraria');
 });
