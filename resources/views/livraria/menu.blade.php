@@ -28,12 +28,18 @@
        derrubou a reidratação de contexto e a credencial pública. Para o
        visitante, o evento é resolvido à mão, fora do escopo.
 
-       O fallback pega o evento EM ANDAMENTO mais recente. Isso pressupõe uma
-       congregação por instalação, que é o caso hoje; com duas, a URL vai
-       precisar dizer de quem é o cardápio. */
+       A escolha do evento ESPELHA Event::atual(): em andamento primeiro,
+       senão o mais recente. Olhar só `em_andamento` deixava o cardápio fora
+       do ar justamente na semana que antecede o evento — que é quando as
+       pessoas querem ver a lista —, porque até a abertura ele está em
+       `planejamento`. Foi o que aconteceu.
+
+       Isso pressupõe uma congregação por instalação, que é o caso hoje; com
+       duas, a URL vai precisar dizer de quem é o cardápio. */
     $evento = auth()->check()
         ? Event::atual()
-        : Event::withoutGlobalScopes()->emAndamento()->orderByDesc('inicio')->first();
+        : Event::withoutGlobalScopes()->emAndamento()->orderByDesc('inicio')->first()
+            ?? Event::withoutGlobalScopes()->orderByDesc('inicio')->first();
 
     $publico = ! auth()->check();
 

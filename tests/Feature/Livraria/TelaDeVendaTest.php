@@ -601,21 +601,36 @@ class TelaDeVendaTest extends TestCase
     }
 
     /**
+     * O cardápio precisa existir ANTES do evento abrir — é a semana em que as
+     * pessoas querem ver a lista, e até a abertura o evento está em
+     * `planejamento`. Olhar só `em_andamento` deixava a página no ar dizendo
+     * "nenhum evento", que foi o que apareceu em produção.
+     */
+    public function test_o_cardapio_publico_funciona_com_evento_em_planejamento(): void
+    {
+        \App\Models\Event::withoutGlobalScopes()->emAndamento()
+            ->update(['status' => 'planejamento']);
+
+        session()->flush();
+
+        $this->get(route('livraria.cardapio'))
+            ->assertOk()
+            ->assertSee('Camiseta Simpósio')
+            ->assertDontSee('Nenhum evento em andamento');
+    }
+
+    /**
      * ⚠ Encerra TODOS os eventos em andamento, não só o do cenário: o visitante
      * não tem congregação na sessão, então a busca corre sem o ChurchScope e
      * alcança evento de qualquer igreja — inclusive os que já estão no banco.
      * É a mesma propriedade que faz a página funcionar deslogada.
      */
-    public function test_sem_evento_em_andamento_o_publico_ve_um_aviso(): void
-    {
-        \App\Models\Event::withoutGlobalScopes()->emAndamento()
-            ->update(['status' => 'encerrado']);
-
-        session()->flush();
-
-        $this->get(route('livraria.cardapio'))
-            ->assertOk()->assertSee('Nenhum evento em andamento');
-    }
+    /* Não há teste do caso "nenhum evento existe": o aviso só aparece com a
+       tabela `events` vazia, e esvaziá-la aqui esbarra na FK RESTRICT de
+       liv_sale_items — o banco de teste é o de desenvolvimento e tem vendas
+       reais. Isolar isso custaria RefreshDatabase na classe inteira para
+       cobrir o estado de uma instalação recém-criada; a view trata o nulo com
+       `$evento?->` e um @empty. */
 
     // ─────────────── saldo por tamanho ───────────────
 
