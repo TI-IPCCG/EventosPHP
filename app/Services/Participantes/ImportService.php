@@ -37,6 +37,42 @@ class ImportService
         'inscrita_em' => ['submission', 'data', 'date', 'envio'],
     ];
 
+    /**
+     * Colunas que a portaria precisa ver no momento do check-in.
+     *
+     * "Quer a camiseta?" e "qual tamanho" não são dado de cadastro: são uma
+     * TAREFA para quem está na porta — alguém tem de separar a peça e entregar.
+     * Enterradas no JSON de respostas, ninguém lê a tempo.
+     */
+    private const PISTAS_OBSERVACAO = ['camiseta', 'tamanho', 'quantidade', 'observ', 'tshirt'];
+
+    /**
+     * Rótulo curto por pista, para o recado caber na tela da portaria.
+     *
+     * O cabeçalho do formulário é uma PERGUNTA ("Quer comprar a camiseta
+     * oficial do evento?"), e repetir isso no cartão de check-in gasta a linha
+     * inteira com o que o voluntário já sabe. O que ele precisa ler é
+     * "Camiseta: GG".
+     */
+    private const ROTULO_CURTO = [
+        'camiseta'   => 'Camiseta',
+        'tshirt'     => 'Camiseta',
+        'tamanho'    => 'Tamanho',
+        'quantidade' => 'Qtd',
+        'observ'     => 'Obs',
+    ];
+
+    /**
+     * Respostas que significam "não tem nada para entregar".
+     *
+     * Sem isto, quem respondeu "Não" ganharia o aviso âmbar de tarefa
+     * pendente na portaria — e o voluntário aprenderia a ignorar o aviso, que
+     * é o pior resultado possível para um alerta.
+     *
+     * O "." é literal: veio assim numa linha da planilha real.
+     */
+    private const SEM_TAREFA = ['nao', 'no', 'n', '-', '.', '0', 'nenhum', 'nenhuma'];
+
     public function __construct(private RegistrationService $inscricoes) {}
 
     /**
@@ -96,6 +132,30 @@ class ImportService
      * @param  array<string>  $cabecalho
      * @return array<string, int|null>  campo => índice da coluna
      */
+    /**
+     * Quais colunas, por palpite, merecem virar observação visível na portaria.
+     *
+     * @param  array<string>  $cabecalho
+     * @return array<int>  índices
+     */
+    public function sugerirObservacoes(array $cabecalho): array
+    {
+        $sugeridas = [];
+
+        foreach ($cabecalho as $i => $titulo) {
+            $normal = Str::lower(Str::ascii($titulo));
+
+            foreach (self::PISTAS_OBSERVACAO as $pista) {
+                if (str_contains($normal, $pista)) {
+                    $sugeridas[] = $i;
+                    continue 2;
+                }
+            }
+        }
+
+        return $sugeridas;
+    }
+
     public function mapear(array $cabecalho): array
     {
         $normalizado = array_map(fn ($c) => Str::lower(Str::ascii($c)), $cabecalho);
@@ -135,6 +195,7 @@ class ImportService
         array $mapa,
         array $cabecalho,
         ?int $operadorId = null,
+        array $colunasObservacao = [],
     ): array {
         if (($mapa['nome'] ?? null) === null) {
             throw new RuntimeException('Diga qual coluna tem o nome — sem isso não dá para inscrever ninguém.');
@@ -154,7 +215,7 @@ class ImportService
             try {
                 $this->inscricoes->inscrever(
                     $evento,
-                    $this->dados($colunas, $mapa, $cabecalho, $nome),
+                    $this->dados($colunas, $mapa, $cabecalho, $nome, $colunasObservacao),
                     'importacao',
                     $operadorId,
                 );
@@ -176,8 +237,9 @@ class ImportService
     }
 
     /** @return array<string, mixed> */
-    private function dados(array $colunas, array $mapa, array $cabecalho, string $nome): array
-    {
+    private function dados(
+        array $colunas, array $mapa, array $cabecalho, string $nome, array $colunasObservacao = []
+    ): array {
         $dados = [
             'nome'     => $nome,
             'email'    => $this->email($this->valor($colunas, $mapa['email'] ?? null)),
@@ -207,7 +269,51 @@ class ImportService
 
         $dados['respostas'] = $respostas ?: null;
 
+        /* A observação é o mesmo dado das respostas, escrito para ser LIDO por
+         * quem está na porta com fila esperando — "Camiseta: Sim · Tamanho: GG",
+         * e não um JSON para decifrar. Só entra quando há conteúdo: linha em
+         * branco viraria "Camiseta:" pendurado no cartão de todo mundo. */
+        $observacao = [];
+
+        foreach ($colunasObservacao as $i) {
+            $i     = (int) $i;
+            $valor = $this->valor($colunas, $i);
+
+            if (blank($valor) || $this->semTarefa($valor)) {
+                continue;
+            }
+
+            $rotulo = $this->rotuloCurto($cabecalho[$i] ?? '');
+            $observacao[] = $rotulo === '' ? $valor : $rotulo.': '.$valor;
+        }
+
+        $dados['observacao'] = $observacao ? implode(' · ', $observacao) : null;
+
         return $dados;
+    }
+
+    /** "Não", "-", "." e afins não são tarefa — e alerta que sempre aparece some da vista. */
+    private function semTarefa(string $valor): bool
+    {
+        return in_array(Str::lower(Str::ascii(trim($valor))), self::SEM_TAREFA, true);
+    }
+
+    /**
+     * O cabeçalho vira um rótulo que cabe na tela: "Quer comprar a camiseta
+     * oficial do evento?" → "Camiseta". Sem pista conhecida, corta no tamanho
+     * que ainda se lê de relance.
+     */
+    private function rotuloCurto(string $cabecalho): string
+    {
+        $normal = Str::lower(Str::ascii($cabecalho));
+
+        foreach (self::ROTULO_CURTO as $pista => $curto) {
+            if (str_contains($normal, $pista)) {
+                return $curto;
+            }
+        }
+
+        return Str::limit(trim(rtrim(trim($cabecalho), ':')), 20, '…');
     }
 
     private function valor(array $colunas, ?int $indice): string

@@ -34,6 +34,10 @@ class extends Component {
     public array $cabecalho = [];
     public array $linhas = [];
     public array $mapa = [];
+
+    /** Colunas que viram o recado da portaria (camiseta, tamanho…). */
+    public array $observacoes = [];
+
     public bool $analisado = false;
 
     /** Relatório do que aconteceu. */
@@ -79,10 +83,11 @@ class extends Component {
             return;
         }
 
-        $this->cabecalho = $lido['cabecalho'];
-        $this->linhas    = $lido['linhas'];
-        $this->mapa      = $import->mapear($lido['cabecalho']);
-        $this->analisado = true;
+        $this->cabecalho   = $lido['cabecalho'];
+        $this->linhas      = $lido['linhas'];
+        $this->mapa        = $import->mapear($lido['cabecalho']);
+        $this->observacoes = $import->sugerirObservacoes($lido['cabecalho']);
+        $this->analisado   = true;
         $this->relatorio = null;
 
         $this->dispatch('toast', tipo: 'ok', titulo: 'Planilha lida',
@@ -91,7 +96,8 @@ class extends Component {
 
     public function recomecar(): void
     {
-        $this->reset(['texto', 'arquivo', 'cabecalho', 'linhas', 'mapa', 'analisado', 'relatorio']);
+        $this->reset(['texto', 'arquivo', 'cabecalho', 'linhas', 'mapa',
+                      'observacoes', 'analisado', 'relatorio']);
     }
 
     public function importar(ImportService $import): void
@@ -112,6 +118,7 @@ class extends Component {
                 array_map(fn ($v) => $v === '' || $v === null ? null : (int) $v, $this->mapa),
                 $this->cabecalho,
                 auth()->id(),
+                array_map('intval', $this->observacoes),
             );
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', tipo: 'erro', titulo: 'Importação não começou',
@@ -205,7 +212,28 @@ class extends Component {
 
             <div class="alert ok" role="note" style="margin-top:.8rem">
                 As colunas que você <strong>não</strong> mapear não se perdem: viram respostas da
-                inscrição (igreja, cidade, camiseta…) e aparecem na ficha da pessoa.
+                inscrição (igreja, cidade…) e aparecem na ficha da pessoa.
+            </div>
+
+            {{-- ── o que a portaria precisa ver ──
+                 Camiseta encomendada é tarefa, não cadastro: alguém tem de
+                 separar a peça. Dentro do JSON de respostas ninguém lê a tempo,
+                 então estas colunas viram um recado que aparece no check-in. --}}
+            <h3 class="bloco-titulo">Avisar a portaria sobre…</h3>
+            <p class="venda-dica">
+                Marque o que o voluntário precisa ver <strong>no momento do check-in</strong> —
+                pedido de camiseta, tamanho, qualquer coisa para entregar.
+            </p>
+
+            <div class="obs-colunas">
+                @foreach ($cabecalho as $i => $titulo)
+                    @if (trim($titulo) !== '')
+                        <label class="obs-coluna">
+                            <input type="checkbox" value="{{ $i }}" wire:model="observacoes">
+                            <span>{{ $titulo }}</span>
+                        </label>
+                    @endif
+                @endforeach
             </div>
 
             <h3 class="bloco-titulo">Primeiras linhas, como vão entrar</h3>

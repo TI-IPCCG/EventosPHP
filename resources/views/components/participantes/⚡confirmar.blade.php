@@ -232,6 +232,25 @@ class extends Component {
             @endif
         </section>
 
+        {{-- ── O RECADO DA PORTARIA ──────────────────────────────────
+             Camiseta encomendada é TAREFA, não dado de cadastro: alguém
+             tem de separar a peça e entregar, e a hora de lembrar é esta —
+             com a pessoa na frente.
+
+             Fica FORA do cartão e antes do botão, porque dentro do cartão
+             viraria mais uma linha cinza entre outras. E aparece tanto
+             antes quanto depois de confirmar: quem já bateu o check-in
+             ainda precisa receber a camiseta. --}}
+        @if (filled($this->inscricao->observacao))
+            <section class="conf-recado" role="note">
+                <i class="bi bi-bag-check-fill"></i>
+                <div>
+                    <strong>Tem item para entregar</strong>
+                    <span>{{ $this->inscricao->observacao }}</span>
+                </div>
+            </section>
+        @endif
+
         {{-- ── o dia: grande, porque é o que decide a qual dia a entrada pertence ── --}}
         <section class="conf-dia {{ $this->ehHoje ? '' : 'conf-dia-alerta' }}">
             <span class="conf-dia-rotulo">Entrada para</span>

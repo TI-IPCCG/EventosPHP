@@ -78,6 +78,8 @@ class RegistrationService
                     'conflito_identidade' => $resultado->conflito,
                     'email_valido'        => $this->emailValido($dados['email'] ?? null),
                     'inscrita_em'         => $dados['inscrita_em'] ?? $evento->agora(),
+                    // Recado para quem está na porta: "Camiseta: Sim · Tamanho GG".
+                    'observacao'          => $dados['observacao'] ?? null,
                     'registrada_por'      => $operadorId,
                 ]);
             } catch (UniqueConstraintViolationException $e) {

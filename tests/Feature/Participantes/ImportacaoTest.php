@@ -65,14 +65,14 @@ class ImportacaoTest extends TestCase
         return app(ImportService::class);
     }
 
-    private function importar(string $texto): array
+    private function importar(string $texto, array $observacoes = []): array
     {
         $lido = $this->servico()->analisar($texto);
 
         return $this->servico()->importar(
             $this->evento, $lido['linhas'],
             $this->servico()->mapear($lido['cabecalho']),
-            $lido['cabecalho'], $this->coord->id,
+            $lido['cabecalho'], $this->coord->id, $observacoes,
         );
     }
 
@@ -304,6 +304,133 @@ class ImportacaoTest extends TestCase
 
         $this->servico()->importar($this->evento, $lido['linhas'],
             ['nome' => null], $lido['cabecalho'], $this->coord->id);
+    }
+
+    // ────────────── o recado da portaria (camiseta) ──────────────
+    //
+    // "Quer a camiseta?" e "qual tamanho" não são dado de cadastro: são uma
+    // TAREFA para quem está na porta — alguém tem de separar a peça. Dentro do
+    // JSON de respostas ninguém lê a tempo, com fila esperando.
+
+    private function comCamiseta(): string
+    {
+        return "Nome completo\tE-mail\tQuer comprar a camiseta oficial do evento?\tIndique TAMANHO e QUANTIDADE:\n"
+            ."Jônatas Bonfim\tjo".uniqid()."@exemplo.com\tSim\tGG\n"
+            ."Sem Camiseta\tsc".uniqid()."@exemplo.com\tNão\t";
+    }
+
+    public function test_sugere_as_colunas_de_camiseta_sozinho(): void
+    {
+        $lido = $this->servico()->analisar($this->comCamiseta());
+
+        $this->assertSame([2, 3], $this->servico()->sugerirObservacoes($lido['cabecalho']));
+    }
+
+    /**
+     * O cabeçalho do formulário é uma PERGUNTA ("Quer comprar a camiseta
+     * oficial do evento?"). Repetir isso no cartão gasta a linha inteira com o
+     * que o voluntário já sabe — ele precisa ler "Camiseta: GG".
+     */
+    public function test_o_recado_sai_curto_para_quem_esta_na_porta(): void
+    {
+        $this->importar($this->comCamiseta(), [2, 3]);
+
+        $jonatas = Registration::where('event_id', $this->evento->id)
+            ->where('nome', 'Jônatas Bonfim')->first();
+
+        $this->assertSame('Camiseta: Sim · Tamanho: GG', $jonatas->observacao);
+    }
+
+    /**
+     * ⚠ "Não" NÃO vira recado.
+     *
+     * O ensaio com a planilha real mostrou o erro: quem respondeu "Não" ganhava
+     * observação "Camiseta: Não" e, com ela, o aviso âmbar de tarefa pendente
+     * na portaria. Setenta e quatro avisos falsos ensinariam o voluntário a
+     * ignorar o alerta — o pior resultado possível para um.
+     */
+    public function test_quem_respondeu_nao_nao_gera_recado(): void
+    {
+        $this->importar($this->comCamiseta(), [2, 3]);
+
+        $sem = Registration::where('event_id', $this->evento->id)
+            ->where('nome', 'Sem Camiseta')->first();
+
+        $this->assertNull($sem->observacao, 'quem não pediu não pode ter aviso');
+        // mas a resposta continua guardada na ficha
+        $this->assertSame('Não', $sem->respostas['quer_comprar_a_camiseta_oficial_do_evento']);
+    }
+
+    /** O "." veio assim numa linha da planilha real, no lugar do tamanho. */
+    public function test_valores_vazios_de_verdade_nao_viram_recado(): void
+    {
+        foreach (['.', '-', 'nenhum', 'N'] as $ruido) {
+            $texto = "Nome completo\tE-mail\tTamanho\n"
+                ."Ruido ".uniqid()."\tr".uniqid()."@exemplo.com\t{$ruido}";
+
+            $this->importar($texto, [2]);
+        }
+
+        $this->assertSame(0, Registration::where('event_id', $this->evento->id)
+            ->whereNotNull('observacao')->count());
+    }
+
+    /** Coluna vazia não entra: senão o recado vira um rótulo solto. */
+    public function test_coluna_vazia_nao_entra_no_recado(): void
+    {
+        $texto = "Nome completo\tE-mail\tTamanho\n"
+            ."Sem Tamanho\tst".uniqid()."@exemplo.com\t";
+
+        $this->importar($texto, [2]);
+
+        $this->assertNull(Registration::where('event_id', $this->evento->id)->first()->observacao);
+    }
+
+    /** Sem marcar coluna nenhuma, ninguém ganha recado. */
+    public function test_sem_colunas_marcadas_nao_ha_observacao(): void
+    {
+        $this->importar($this->comCamiseta());
+
+        $this->assertNull(Registration::where('event_id', $this->evento->id)
+            ->where('nome', 'Jônatas Bonfim')->first()->observacao);
+    }
+
+    /** O recado tem de chegar na tela onde o check-in acontece. */
+    public function test_a_portaria_ve_o_recado_na_confirmacao(): void
+    {
+        $this->importar($this->comCamiseta(), [2, 3]);
+
+        $jonatas = Registration::where('event_id', $this->evento->id)
+            ->where('nome', 'Jônatas Bonfim')->first();
+
+        $this->actingAs($this->coord)
+            ->get(route('participantes.confirmar', ['token' => $jonatas->token]))
+            ->assertOk()
+            ->assertSee('Tem item para entregar')
+            ->assertSee('GG');
+    }
+
+    public function test_quem_nao_tem_recado_nao_ve_o_aviso(): void
+    {
+        $texto = "Nome completo\tE-mail\nSem Recado\tsr".uniqid()."@exemplo.com";
+        $this->importar($texto);
+
+        $pessoa = Registration::where('event_id', $this->evento->id)->first();
+
+        $this->actingAs($this->coord)
+            ->get(route('participantes.confirmar', ['token' => $pessoa->token]))
+            ->assertOk()
+            ->assertDontSee('Tem item para entregar');
+    }
+
+    /** E também na busca da portaria, antes de abrir a confirmação. */
+    public function test_a_busca_da_portaria_mostra_o_recado(): void
+    {
+        $this->importar($this->comCamiseta(), [2, 3]);
+
+        Livewire::actingAs($this->coord)->test('participantes.checkin')
+            ->set('busca', 'Jônatas')
+            ->assertSee('GG');
     }
 
     // ─────────────────────────── a tela ───────────────────────────

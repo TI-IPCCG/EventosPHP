@@ -189,8 +189,12 @@ class extends Component {
         $this->busca = '';
         $this->recarregarContadores();
 
-        $this->dispatch('toast', tipo: 'ok', titulo: 'Entrada registrada',
-            mensagem: $inscricao->nome.' · '.$inscricao->codigo);
+        $this->dispatch('toast', tipo: filled($inscricao->observacao) ? 'aviso' : 'ok',
+            titulo: 'Entrada registrada',
+            mensagem: $inscricao->nome.' · '.$inscricao->codigo
+                // o recado vai junto: sem ele, confirmar pela lista faria a
+                // camiseta ser esquecida entre uma pessoa e a próxima
+                .(filled($inscricao->observacao) ? ' — ENTREGAR: '.$inscricao->observacao : ''));
     }
 
     public function desfazer(int $checkinId, CheckinService $checkins): void
@@ -343,6 +347,14 @@ class extends Component {
                                 <small class="bloco">
                                     {{ $r->codigo }}@if ($r->email) · {{ $r->email }} @endif
                                 </small>
+                                {{-- Já na busca, antes de abrir a confirmação: o
+                                     voluntário pode ir pegando a camiseta enquanto
+                                     a pessoa chega ao balcão. --}}
+                                @if (filled($r->observacao))
+                                    <small class="bloco recado-mini">
+                                        <i class="bi bi-bag-check-fill"></i> {{ $r->observacao }}
+                                    </small>
+                                @endif
                             </div>
                             <span class="res-preco">
                                 <i class="bi bi-{{ $presente ? 'check-circle-fill' : 'chevron-right' }}"></i>

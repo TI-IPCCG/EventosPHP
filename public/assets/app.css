@@ -2236,3 +2236,35 @@ body:has(.venda-fab) .toasts { top: 76px }
    ao lado, porque o cabeçalho já divide a largura com o total — e o total é o
    que não pode encolher. */
 .venda-menu-link { margin-top: .5rem; text-decoration: none }
+
+/* ── Recado da portaria (camiseta encomendada, e o que mais vier) ──
+   Âmbar e não verde: é um AVISO de que algo precisa ser feito, não uma
+   confirmação de que deu certo. Na porta, com fila, a cor é lida antes
+   do texto — e verde aqui faria o voluntário seguir em frente sem
+   entregar a peça.                                                     */
+.conf-recado {
+  display: flex; align-items: flex-start; gap: .7rem;
+  margin: 1rem 0;
+  padding: .9rem 1rem;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-dim);
+}
+.conf-recado i { font-size: 1.3rem; color: var(--accent); line-height: 1.2 }
+.conf-recado strong { display: block; color: var(--accent-hover); font-size: .95rem }
+.conf-recado span { display: block; margin-top: .15rem; font-size: 1.05rem; font-weight: 600 }
+
+/* a mesma tarefa, em miniatura, na lista de busca da portaria */
+.recado-mini { color: var(--accent-hover); font-weight: 600 }
+
+/* Colunas que viram recado da portaria, no passo 2 da importação. */
+.obs-colunas { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 .2rem }
+.obs-coluna {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .4rem .7rem; border: 1px solid var(--border);
+  border-radius: 999px; font-size: .85rem; cursor: pointer;
+}
+.obs-coluna:has(input:checked) {
+  border-color: var(--accent); background: var(--accent-dim);
+  color: var(--accent-hover); font-weight: 600;
+}
