@@ -44,9 +44,13 @@
 
     $publico = ! auth()->check();
 
-    // Para quem consulta no celular a capa é o que identifica o livro; para a
-    // parede, economizar papel costuma valer mais.
-    $comCapa = $publico ? request('capas') !== '0' : request('capas') === '1';
+    /* Capas ligadas por padrão, para todo mundo.
+     *
+     * Quem abre o cardápio identifica o livro pela capa, e os controles no alto
+     * são do operador que vai imprimir — não do participante, que só quer ver o
+     * que tem. Um padrão que exige mexer em seletor para ficar bom é um padrão
+     * errado. Quem precisa economizar papel desliga na hora de imprimir. */
+    $comCapa = request('capas') !== '0';
     $mostrar = request('itens') === 'so_disponiveis' ? 'so_disponiveis' : 'todos';
 
     $linhas = $evento
@@ -203,12 +207,22 @@
            O pontilhado é um filete que cresce entre o nome e o preço: assim o
            olho atravessa a folha sem perder a linha, que é o problema real de
            ler preço a dois metros de distância. */
+        /* ⚠ `align-items: center`, e não baseline.
+           A baseline de uma IMAGEM é a borda de baixo dela, então com capa o
+           nome do item descia até o pé da foto e abria um vão do tamanho da
+           imagem à direita dela. O alinhamento por baseline continua valendo
+           entre nome, filete e preço — que agora moram numa linha só. */
         .item {
-            display: flex; align-items: baseline; gap: 8px;
+            display: flex; align-items: center; gap: 10px;
             padding: 9px 0;
             border-bottom: 1px solid #EDEFEA;
         }
         .item:last-child { border-bottom: 0; }
+
+        /* o corpo toma o que sobra; min-width:0 deixa o nome truncar em vez de
+           empurrar o preço para fora da folha */
+        .item-corpo { flex: 1 1 auto; min-width: 0; }
+        .item-linha { display: flex; align-items: baseline; gap: 8px; }
 
         .capa {
             width: 34px; height: 46px; flex: 0 0 34px;
@@ -225,6 +239,20 @@
             display: flex; align-items: center;
         }
         button.capa-toque:hover .capa { outline: 2px solid var(--ambar); outline-offset: 1px; }
+
+        /* O nome como gatilho: herda a tipografia da linha para não virar um
+           "botão" no meio do cardápio — o que muda é o cursor e a lupa. */
+        button.nome-toque {
+            border: 0; padding: 0; background: none; cursor: zoom-in;
+            font: inherit; color: inherit; text-align: left;
+        }
+        .lupa-icone {
+            width: 12px; height: 12px; margin-left: 5px;
+            color: var(--ambar); opacity: .75;
+            vertical-align: -1px; flex-shrink: 0;
+        }
+        button.nome-toque:hover .nome { text-decoration: underline; text-decoration-color: var(--ambar) }
+        button.nome-toque:hover .lupa-icone { opacity: 1 }
         .nome { font-weight: 700; font-size: 15px; }
         .detalhe { font-style: italic; color: var(--fraco); font-weight: 400; font-size: 13px; }
         /* Um bloco por tamanho, com o saldo. Separados por caixa e não por
@@ -300,6 +328,10 @@
             border: 0; background: none; color: var(--fraco);
             font-size: 18px; line-height: 1; padding: 6px 8px; cursor: pointer;
         }
+        .dica-lupa {
+            margin: -8px 0 14px; font-size: 12px; color: var(--fraco);
+            font-family: Arial, Helvetica, sans-serif;
+        }
         .sem-resultado { display: none; text-align: center; color: var(--fraco); padding: 26px 0; }
         [hidden] { display: none !important; }
 
@@ -327,8 +359,8 @@
 
         @media print {
             body { padding: 0; }
-            .acoes, .busca, .lupa { display: none !important; }
-            button.capa-toque { cursor: default }
+            .acoes, .busca, .lupa, .dica-lupa, .lupa-icone { display: none !important; }
+            button.capa-toque, button.nome-toque { cursor: default }
             /* o título repete se o cardápio passar de uma folha */
             .item { page-break-inside: avoid; }
             .secao { page-break-after: avoid; }
@@ -369,6 +401,10 @@
                        aria-label="Buscar no cardápio">
                 <button type="button" class="limpar" id="limpar" hidden aria-label="Limpar busca">✕</button>
             </div>
+
+            @if ($comCapa)
+                <p class="dica-lupa">Toque na foto ou no nome do item para ver a imagem maior.</p>
+            @endif
         @endif
 
         @forelse ($itens as $categoria => $doGrupo)
@@ -381,6 +417,11 @@
                      cada tecla. --}}
                 <div class="item {{ $i->esgotado ? 'fora' : '' }} {{ $i->destaque ? 'destaque' : '' }}"
                      data-secao="{{ $categoria }}"
+                     @if ($comCapa && $i->capa)
+                         data-grande="{{ $i->capa->url() }}"
+                         data-nome="{{ $i->nome }}"
+                         data-preco="R$ {{ number_format($i->preco, 2, ',', '.') }}"
+                     @endif
                      data-busca="{{ Str::lower(Str::ascii(
                          $i->nome.' '.$i->detalhe.' '.$categoria.' '.$i->tamanhos->pluck('nome')->join(' ')
                      )) }}">
@@ -390,10 +431,7 @@
                                  cardápio abre no 4G do evento, e trinta
                                  imagens de 1200px na entrada seriam um cartaz
                                  que ninguém espera carregar. --}}
-                            <button type="button" class="capa-toque"
-                                    data-grande="{{ $i->capa->url() }}"
-                                    data-nome="{{ $i->nome }}"
-                                    data-preco="R$ {{ number_format($i->preco, 2, ',', '.') }}"
+                            <button type="button" class="capa-toque abre-lupa"
                                     aria-label="Ampliar a imagem de {{ $i->nome }}">
                                 <img class="capa" src="{{ $i->capa->urlThumb() }}" alt="" loading="lazy">
                             </button>
@@ -402,11 +440,39 @@
                         @endif
                     @endif
 
-                    <span>
-                        <span class="nome">{{ $i->nome }}</span>
-                        @if ($i->detalhe)
-                            <span class="detalhe">— {{ $i->detalhe }}</span>
-                        @endif
+                    <div class="item-corpo">
+                        <div class="item-linha">
+                            @if ($comCapa && $i->capa)
+                                {{-- O nome abre a imagem junto com a capa: quase
+                                     ninguém tenta tocar numa miniatura de 34px, e
+                                     a lupa ao lado é o que conta que há mais para
+                                     ver. Sem ela, o recurso não existe para quem
+                                     não experimentou. --}}
+                                <button type="button" class="nome-toque abre-lupa"
+                                        aria-label="Ampliar a imagem de {{ $i->nome }}">
+                                    <span class="nome">{{ $i->nome }}</span>
+                                    @if ($i->detalhe)
+                                        <span class="detalhe">— {{ $i->detalhe }}</span>
+                                    @endif
+                                    <svg class="lupa-icone" viewBox="0 0 16 16" aria-hidden="true">
+                                        <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                                        <line x1="10.8" y1="10.8" x2="14.5" y2="14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
+                            @else
+                                <span>
+                                    <span class="nome">{{ $i->nome }}</span>
+                                    @if ($i->detalhe)
+                                        <span class="detalhe">— {{ $i->detalhe }}</span>
+                                    @endif
+                                </span>
+                            @endif
+
+                            <span class="filete"></span>
+
+                            <span class="preco">R$ {{ number_format($i->preco, 2, ',', '.') }}</span>
+                        </div>
+
                         @if ($i->tamanhos->isNotEmpty())
                             <span class="tamanhos">
                                 @foreach ($i->tamanhos as $t)
@@ -423,11 +489,7 @@
                                 {{ $i->esgotado ? 'Indisponível' : 'Disponível' }}
                             </span>
                         @endif
-                    </span>
-
-                    <span class="filete"></span>
-
-                    <span class="preco">R$ {{ number_format($i->preco, 2, ',', '.') }}</span>
+                    </div>
                 </div>
             @endforeach
         @empty
@@ -499,11 +561,13 @@
             const lnome = document.getElementById('lupa-nome');
             const lpre  = document.getElementById('lupa-preco');
 
-            function abrir(botao) {
-                limg.src       = botao.dataset.grande;
-                limg.alt       = botao.dataset.nome;
-                lnome.textContent = botao.dataset.nome;
-                lpre.textContent  = botao.dataset.preco;
+            function abrir(item) {
+                if (! item || ! item.dataset.grande) return;
+
+                limg.src          = item.dataset.grande;
+                limg.alt          = item.dataset.nome;
+                lnome.textContent = item.dataset.nome;
+                lpre.textContent  = item.dataset.preco;
                 lupa.setAttribute('open', '');
             }
 
@@ -514,8 +578,10 @@
                 limg.src = '';
             }
 
-            document.querySelectorAll('.capa-toque').forEach((b) => {
-                b.addEventListener('click', () => abrir(b));
+            // capa e nome são dois gatilhos do mesmo alvo: os dados moram no
+            // .item, e não repetidos em cada botão
+            document.querySelectorAll('.abre-lupa').forEach((b) => {
+                b.addEventListener('click', () => abrir(b.closest('.item')));
             });
 
             document.getElementById('lupa-fechar').addEventListener('click', fechar);

@@ -516,7 +516,13 @@ class TelaDeVendaTest extends TestCase
         $this->assertStringNotContainsString('class="lema"', $html);
     }
 
-    public function test_as_capas_so_entram_quando_pedidas(): void
+    /**
+     * Capas LIGADAS por padrão: quem abre o cardápio identifica o item pela
+     * capa, e os controles no alto são do operador que vai imprimir — não do
+     * participante. Um padrão que exige mexer em seletor para ficar bom é um
+     * padrão errado.
+     */
+    public function test_as_capas_aparecem_por_padrao_e_podem_ser_desligadas(): void
     {
         $produto = ShipmentItem::find($this->copies['CM001']->shipment_item_id)->product;
 
@@ -526,11 +532,16 @@ class TelaDeVendaTest extends TestCase
             'ordem' => 1, 'created_at' => now(),
         ]);
 
+        // sem pedir nada — e também no cardápio público
         $this->actingAs($this->voluntario)->get(route('livraria.menu'))
-            ->assertOk()->assertDontSee('capa-thumb.jpg');
-
-        $this->actingAs($this->voluntario)->get(route('livraria.menu', ['capas' => '1']))
             ->assertOk()->assertSee('capa-thumb.jpg');
+
+        session()->flush();
+        $this->get(route('livraria.cardapio'))->assertOk()->assertSee('capa-thumb.jpg');
+
+        // quem vai imprimir e quer economizar papel desliga
+        $this->actingAs($this->voluntario)->get(route('livraria.menu', ['capas' => '0']))
+            ->assertOk()->assertDontSee('capa-thumb.jpg');
     }
 
     // ─────────── destaque e ampliação no cardápio ───────────
@@ -617,6 +628,40 @@ class TelaDeVendaTest extends TestCase
         $this->assertMatchesRegularExpression('/class="item\s*\w*\s*destaque"/', $html);
         // …mas o "Sim" não aparece ao lado do nome
         $this->assertStringNotContainsString('class="detalhe">— Sim', $html);
+    }
+
+    /**
+     * Quase ninguém tenta tocar numa miniatura de 34px. Sem o nome como gatilho
+     * e sem a lupa ao lado, o recurso não existe para quem não experimentou —
+     * então os dois são parte do recurso, não enfeite.
+     */
+    public function test_o_nome_tambem_abre_a_imagem_e_a_lupa_avisa(): void
+    {
+        $this->comCapa();
+
+        $html = $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('nome-toque abre-lupa', $html);
+        $this->assertStringContainsString('capa-toque abre-lupa', $html);
+        $this->assertStringContainsString('lupa-icone', $html);
+        $this->assertStringContainsString('Toque na foto ou no nome', $html);
+    }
+
+    /**
+     * Item sem foto não vira botão: não há o que ampliar.
+     *
+     * Procura `data-grande=`, e não a classe — "abre-lupa" aparece no
+     * JavaScript da própria página, e a asserção passaria verde com qualquer
+     * coisa. É o mesmo engano de procurar texto que mora no CSS.
+     */
+    public function test_item_sem_foto_nao_ganha_gatilho(): void
+    {
+        $html = $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-grande=', $html);
+        $this->assertStringNotContainsString('<svg class="lupa-icone"', $html);
     }
 
     public function test_sem_capa_nao_ha_o_que_ampliar(): void
