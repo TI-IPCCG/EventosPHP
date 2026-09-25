@@ -64,9 +64,7 @@ class Person extends Model
     /** Nome de gente, não grito: o Forms vem cheio de CAIXA ALTA e espaço duplo. */
     public function setNomeAttribute($valor): void
     {
-        $limpo = preg_replace('/\s+/', ' ', trim((string) $valor));
-
-        $this->attributes['nome'] = mb_convert_case($limpo, MB_CASE_TITLE, 'UTF-8');
+        $this->attributes['nome'] = \App\Support\NomeProprio::formatar($valor);
     }
 
     public function registrations(): HasMany

@@ -43,10 +43,14 @@ class extends Component {
     public int $enviadosAgora = 0;
     public string $emailTeste = '';
 
+    /** Inscrição sendo corrigida; null quando o formulário é de cadastro novo. */
+    public ?int $editando = null;
+
     public string $nome = '';
     public string $email = '';
     public string $telefone = '';
     public string $cpf = '';
+    public string $observacao = '';
 
     public function mount(): void
     {
@@ -222,11 +226,34 @@ class extends Component {
                 mensagem: mb_substr((string) $inscricao->fresh()->qr_erro, 0, 160));
     }
 
+    /**
+     * Traz a inscrição para o formulário.
+     *
+     * Carrega o SNAPSHOT da inscrição, não o cadastro da pessoa: é o snapshot
+     * que vale para este evento e é dele que sai o e-mail da credencial.
+     */
+    public function editar(int $id): void
+    {
+        abort_unless(auth()->user()->can('participantes.gerenciar'), 403);
+
+        $i = Registration::where('event_id', $this->evento->id)->findOrFail($id);
+
+        $this->editando   = $i->id;
+        $this->nome       = (string) $i->nome;
+        $this->email      = (string) $i->email;
+        $this->telefone   = (string) $i->telefone;
+        $this->cpf        = (string) $i->cpf;
+        $this->observacao = (string) $i->observacao;
+
+        $this->mostrarForm = true;
+        $this->resetErrorBag();
+    }
+
     public function novo(): void
     {
         abort_unless(auth()->user()->can('participantes.gerenciar'), 403);
 
-        $this->reset(['nome', 'email', 'telefone', 'cpf']);
+        $this->reset(['nome', 'email', 'telefone', 'cpf', 'observacao', 'editando']);
         $this->resetValidation();
         $this->mostrarForm = true;
     }
@@ -236,11 +263,18 @@ class extends Component {
         abort_unless(auth()->user()->can('participantes.gerenciar'), 403);
 
         $this->validate([
-            'nome'     => ['required', 'string', 'min:3', 'max:150'],
-            'email'    => ['nullable', 'email:rfc', 'max:191'],
-            'telefone' => ['nullable', 'string', 'max:20'],
-            'cpf'      => ['nullable', 'string', 'max:14'],
+            'nome'       => ['required', 'string', 'min:3', 'max:150'],
+            'email'      => ['nullable', 'email:rfc', 'max:191'],
+            'telefone'   => ['nullable', 'string', 'max:20'],
+            'cpf'        => ['nullable', 'string', 'max:14'],
+            'observacao' => ['nullable', 'string', 'max:500'],
         ], attributes: ['nome' => 'nome', 'email' => 'e-mail']);
+
+        if ($this->editando) {
+            $this->corrigir($inscricoes);
+
+            return;
+        }
 
         try {
             $inscricao = $inscricoes->inscrever($this->evento, [
@@ -255,12 +289,51 @@ class extends Component {
             return;
         }
 
-        $this->reset(['nome', 'email', 'telefone', 'cpf']);
+        $this->reset(['nome', 'email', 'telefone', 'cpf', 'observacao', 'editando']);
         $this->mostrarForm = false;
         unset($this->inscritos, $this->totais);
 
         $this->dispatch('toast', tipo: 'ok', titulo: 'Inscrito',
             mensagem: $inscricao->nome.' · '.$inscricao->codigo);
+    }
+
+    /**
+     * Grava a correção.
+     *
+     * Trocar o e-mail NÃO reenvia sozinho: a pessoa pode já ter recebido no
+     * endereço certo e só ter um nome escrito errado. Quem decide reenviar é
+     * quem está olhando — e o botão está ali na linha.
+     */
+    private function corrigir(RegistrationService $inscricoes): void
+    {
+        $inscricao = Registration::where('event_id', $this->evento->id)
+            ->findOrFail($this->editando);
+
+        $emailAntigo = $inscricao->email;
+
+        $espelhou = $inscricoes->corrigir($inscricao, [
+            'nome'       => $this->nome,
+            'email'      => $this->email ?: null,
+            'telefone'   => $this->telefone ?: null,
+            'cpf'        => $this->cpf ?: null,
+            'observacao' => $this->observacao ?: null,
+        ]);
+
+        $mudouEmail = $emailAntigo !== $inscricao->fresh()->email;
+
+        $this->reset(['nome', 'email', 'telefone', 'cpf', 'observacao', 'editando']);
+        $this->mostrarForm = false;
+        unset($this->inscritos, $this->totais);
+
+        $this->dispatch('toast',
+            tipo: $espelhou ? 'ok' : 'aviso',
+            titulo: 'Inscrição corrigida',
+            mensagem: match (true) {
+                ! $espelhou => 'O e-mail ou CPF novo já pertence a outra pessoa no cadastro — '
+                    .'a inscrição foi corrigida, o cadastro ficou como estava.',
+                $mudouEmail => 'E-mail alterado. Use "Enviar credencial" para mandar de novo.',
+                default     => $inscricao->nome.' · '.$inscricao->codigo,
+            });
     }
 
     public function cancelar(int $id, RegistrationService $inscricoes): void
@@ -394,7 +467,16 @@ class extends Component {
 
         @if ($mostrarForm)
             <section class="card">
-                <h2 class="card-titulo">Inscrever alguém</h2>
+                <h2 class="card-titulo">
+                    {{ $editando ? 'Corrigir inscrição' : 'Inscrever alguém' }}
+                </h2>
+
+                @if ($editando)
+                    <div class="alert warn" role="note">
+                        O <strong>código e o QR não mudam</strong> — quem já recebeu a credencial
+                        continua com ela valendo.
+                    </div>
+                @endif
                 <form class="form" wire:submit="salvar">
                     <div>
                         <label for="i-nome">Nome completo</label>
@@ -417,10 +499,23 @@ class extends Component {
                         <small class="ajuda">Opcional — ajuda a reconhecer a pessoa no próximo evento.</small>
                         @error('cpf') <span class="field-error">{{ $message }}</span> @enderror
                     </div>
+                    <div>
+                        <label for="i-obs">Observação</label>
+                        <input id="i-obs" type="text" wire:model="observacao" maxlength="500"
+                               placeholder="Camiseta: Sim · Tamanho M">
+                        <small class="ajuda">
+                            Aparece como <strong>aviso na portaria</strong> no momento do check-in —
+                            use para o que a pessoa tem a receber.
+                        </small>
+                        @error('observacao') <span class="field-error">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="form-acoes">
                         <button type="button" class="btn-sm secondary"
                                 wire:click="$set('mostrarForm', false)">Cancelar</button>
-                        <button type="submit" wire:loading.attr="disabled" wire:target="salvar">Inscrever</button>
+                        <button type="submit" wire:loading.attr="disabled" wire:target="salvar">
+                            {{ $editando ? 'Salvar correção' : 'Inscrever' }}
+                        </button>
                     </div>
                 </form>
             </section>
@@ -457,6 +552,11 @@ class extends Component {
                             @if ($i->telefone) · {{ $i->telefone }} @endif
                             @if ($i->qr_erro) · <span style="color:var(--danger)">{{ $i->qr_erro }}</span> @endif
                         </small>
+                        @if (filled($i->observacao))
+                            <small class="bloco recado-mini">
+                                <i class="bi bi-bag-check-fill"></i> {{ $i->observacao }}
+                            </small>
+                        @endif
                     </div>
                     <div class="card-acoes">
                         @can('participantes.enviar')
@@ -478,6 +578,10 @@ class extends Component {
                         @endcan
                         @can('participantes.gerenciar')
                             @unless ($i->cancelada)
+                                <button type="button" class="btn-sm btn-ghost"
+                                        wire:click="editar({{ $i->id }})">
+                                    Editar
+                                </button>
                                 <button type="button" class="btn-sm btn-ghost"
                                         wire:click="cancelar({{ $i->id }})"
                                         wire:confirm="Cancelar a inscrição de {{ $i->nome }}? Ela deixa de valer, mas o histórico fica.">

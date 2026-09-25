@@ -199,7 +199,9 @@ class PersonResolverTest extends TestCase
             'nome' => '  JOÃO   DA   SILVA  ', 'email' => 'js'.uniqid().'@x.org',
         ], 1);
 
-        $this->assertSame('João Da Silva', $r->pessoa->nome);
+        // "da" minúsculo: preposição não é sobrenome, e o crachá sai com o
+        // nome escrito como gente escreve (ver App\Support\NomeProprio)
+        $this->assertSame('João da Silva', $r->pessoa->nome);
     }
 
     public function test_chave_de_pessoa_fundida_leva_a_quem_sobreviveu(): void

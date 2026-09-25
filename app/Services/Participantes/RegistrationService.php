@@ -4,6 +4,7 @@ namespace App\Services\Participantes;
 
 use App\Models\Event;
 use App\Models\Participantes\EventSetting;
+use App\Models\Participantes\Person;
 use App\Models\Participantes\Registration;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
@@ -50,6 +51,85 @@ class RegistrationService
 
             return $this->gravar($evento, $resultado, $dados, $origem, $operadorId);
         });
+    }
+
+    /**
+     * Corrige os dados de uma inscrição já existente.
+     *
+     * ── O QUE NUNCA MUDA ──────────────────────────────────────────────
+     * `codigo` e `token`. A credencial já foi enviada, impressa, talvez
+     * salva na galeria do celular — trocar o token faria o QR de quem já
+     * recebeu parar de funcionar, e o erro só apareceria na portaria, com
+     * a pessoa na frente. Corrigir o e-mail não pode invalidar o crachá.
+     *
+     * ── A PESSOA E A INSCRIÇÃO ────────────────────────────────────────
+     * São dois registros: o snapshot da inscrição (o que vale para ESTE
+     * evento e para o envio) e o cadastro em par_people (quem ela é hoje).
+     * Corrigir um e-mail digitado errado precisa acertar os dois — senão o
+     * cadastro segue errado no próximo evento — mas o cadastro tem UNIQUE
+     * de e-mail e CPF: se o valor novo já é de outra pessoa, a inscrição é
+     * corrigida assim mesmo e o cadastro fica como estava.
+     *
+     * Nunca funde ninguém, nunca rouba chave: é correção, não dedup.
+     *
+     * @param  array  $dados  nome, email, telefone, cpf, observacao
+     * @return bool  se o cadastro da pessoa também pôde ser atualizado
+     */
+    public function corrigir(Registration $inscricao, array $dados): bool
+    {
+        return DB::transaction(function () use ($inscricao, $dados) {
+            // minúsculo e sem espaço, como o PersonResolver grava: senão
+            // "Fulano@Gmail.com " deixaria de casar com o cadastro dele mesmo
+            $email = filled($dados['email'] ?? null)
+                ? Str::lower(trim($dados['email']))
+                : null;
+            $cpf   = isset($dados['cpf']) ? preg_replace('/\D/', '', (string) $dados['cpf']) : null;
+
+            $inscricao->update([
+                'nome'         => trim((string) ($dados['nome'] ?? $inscricao->nome)),
+                'email'        => $email,
+                'telefone'     => filled($dados['telefone'] ?? null) ? trim($dados['telefone']) : null,
+                'cpf'          => $cpf ?: null,
+                'observacao'   => filled($dados['observacao'] ?? null) ? trim($dados['observacao']) : null,
+                'email_valido' => $this->emailValido($email),
+            ]);
+
+            return $this->espelharNaPessoa($inscricao, $email, $cpf);
+        });
+    }
+
+    /**
+     * Leva a correção para o cadastro — se a chave nova não for de outra
+     * pessoa. Tentar assim mesmo tomaria uma violação de UNIQUE na cara do
+     * usuário, no meio de um conserto simples.
+     */
+    private function espelharNaPessoa(Registration $inscricao, ?string $email, ?string $cpf): bool
+    {
+        $pessoa = $inscricao->person;
+
+        if (! $pessoa) {
+            return false;
+        }
+
+        $ocupada = fn (string $campo, ?string $valor) => filled($valor)
+            && Person::withoutGlobalScopes()
+                ->where('church_id', $pessoa->church_id)
+                ->where($campo, $valor)
+                ->whereKeyNot($pessoa->id)
+                ->exists();
+
+        if ($ocupada('email', $email) || $ocupada('cpf', $cpf)) {
+            return false;
+        }
+
+        $pessoa->update(array_filter([
+            'nome'     => $inscricao->nome,
+            'email'    => $email,
+            'cpf'      => $cpf ?: null,
+            'telefone' => $inscricao->telefone,
+        ], fn ($v, $k) => $k === 'nome' || $v !== null, ARRAY_FILTER_USE_BOTH));
+
+        return true;
     }
 
     /**

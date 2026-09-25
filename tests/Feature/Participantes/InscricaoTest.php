@@ -155,7 +155,9 @@ class InscricaoTest extends TestCase
         $i->person->update(['telefone' => '67900000000', 'nome' => 'Nome Novo']);
 
         $this->assertSame('67999990000', $i->fresh()->telefone);
-        $this->assertSame('Mudou De Numero', $i->fresh()->nome);
+        // "de" minúsculo é o formato atual do nome (App\Support\NomeProprio);
+        // o que este teste guarda é que o snapshot NÃO virou "Nome Novo"
+        $this->assertSame('Mudou de Numero', $i->fresh()->nome);
     }
 
     public function test_email_invalido_marca_sem_descartar_a_pessoa(): void
