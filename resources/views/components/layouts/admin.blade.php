@@ -102,6 +102,13 @@
                             <i class="bi bi-card-list nav-icon"></i><span>Inscritos</span>
                         </a>
 
+                        @can('participantes.importar')
+                            <a href="{{ route('participantes.importar') }}"
+                               class="nav-item {{ request()->routeIs('participantes.importar') ? 'active' : '' }}">
+                                <i class="bi bi-upload nav-icon"></i><span>Importar</span>
+                            </a>
+                        @endcan
+
                         <a href="{{ route('participantes.lista') }}"
                            class="nav-item {{ request()->routeIs('participantes.lista') ? 'active' : '' }}">
                             <i class="bi bi-printer nav-icon"></i><span>Lista em papel</span>

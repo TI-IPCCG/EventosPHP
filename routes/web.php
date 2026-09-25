@@ -139,6 +139,9 @@ Route::middleware('auth')->group(function () {
     Route::livewire('/participantes', 'participantes.inscritos')
         ->name('participantes.inscritos')->middleware('can:ver-participantes');
 
+    Route::livewire('/participantes/importar', 'participantes.importar')
+        ->name('participantes.importar')->middleware('can:participantes.importar');
+
     Route::livewire('/participantes/dias', 'participantes.dias')
         ->name('participantes.dias')->middleware('can:participantes.gerenciar');
 

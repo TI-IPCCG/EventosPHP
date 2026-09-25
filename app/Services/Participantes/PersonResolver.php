@@ -59,8 +59,27 @@ class PersonResolver
 
         if ($porEmail) {
             // Mesmo e-mail, primeiro nome diferente: provavelmente outra pessoa
-            // da mesma casa. Cria separada, sem tomar o e-mail de ninguém.
+            // da mesma casa.
             if ($this->primeiroNome($nome) !== $this->primeiroNome($porEmail->nome)) {
+                /* ⚠ Mas ANTES de criar, o histórico.
+                 *
+                 * O cônjuge que compartilha e-mail nasce com par_people.email
+                 * NULL — de propósito, para não tomar o endereço de ninguém. O
+                 * efeito colateral é que ele fica sem chave própria: na
+                 * importação seguinte cairia aqui de novo e seria criado outra
+                 * vez, e outra. Reimportar a mesma planilha duplicava os
+                 * cônjuges em silêncio, um por rodada.
+                 *
+                 * O snapshot da inscrição guarda o e-mail E o nome, então é ele
+                 * que sabe distinguir os dois moradores da mesma caixa postal.
+                 */
+                if ($jaConhecida = $this->buscarNoHistorico($email, $churchId, $nome)) {
+                    $this->completar($jaConhecida, $dados);
+
+                    return new ResultadoDaPessoa($jaConhecida, 'historico');
+                }
+
+                // Cria separada, sem tomar o e-mail de ninguém.
                 return new ResultadoDaPessoa($this->criar($dados, $churchId, semEmail: true), 'nova');
             }
 
@@ -69,7 +88,7 @@ class PersonResolver
             return new ResultadoDaPessoa($porEmail, 'email');
         }
 
-        if ($email && $historica = $this->buscarNoHistorico($email, $churchId)) {
+        if ($email && $historica = $this->buscarNoHistorico($email, $churchId, $nome)) {
             $this->completar($historica, $dados);
 
             return new ResultadoDaPessoa($historica, 'historico');
@@ -124,23 +143,40 @@ class PersonResolver
      * O e-mail nas inscrições antigas. O snapshot guarda todo endereço já
      * usado, então ele funciona como lista de e-mails anteriores da pessoa —
      * sem que exista uma tabela para isso.
+     *
+     * ⚠ O PRIMEIRO NOME faz parte da busca, e não é refinamento: um e-mail de
+     * casal aponta para DUAS pessoas no histórico. Pegar a inscrição mais
+     * recente e ignorar o nome devolveria a esposa quando quem chega é o
+     * marido — fundindo dois por engano, que é o erro irreversível que este
+     * resolver existe para não cometer.
      */
-    private function buscarNoHistorico(string $email, int $churchId): ?Person
+    private function buscarNoHistorico(string $email, int $churchId, string $nome): ?Person
     {
-        $personId = Registration::query()
-            ->where('email', $email)
-            ->orderByDesc('inscrita_em')
-            ->value('person_id');
+        $primeiro = $this->primeiroNome($nome);
 
-        if (! $personId) {
-            return null;
+        $candidatas = Registration::query()
+            ->where('email', $email)
+            ->whereNotNull('person_id')
+            ->orderByDesc('inscrita_em')
+            ->get(['person_id', 'nome']);
+
+        foreach ($candidatas as $candidata) {
+            if ($this->primeiroNome($candidata->nome) !== $primeiro) {
+                continue;
+            }
+
+            $pessoa = Person::withoutGlobalScopes()
+                ->where('church_id', $churchId)
+                ->whereKey($candidata->person_id)
+                ->whereNull('fundida_em_id')
+                ->first();
+
+            if ($pessoa) {
+                return $pessoa;
+            }
         }
 
-        return Person::withoutGlobalScopes()
-            ->where('church_id', $churchId)
-            ->whereKey($personId)
-            ->whereNull('fundida_em_id')
-            ->first();
+        return null;
     }
 
     private function criar(array $dados, int $churchId, bool $semEmail = false): Person
