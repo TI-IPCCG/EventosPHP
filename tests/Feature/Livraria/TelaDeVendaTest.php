@@ -533,6 +533,106 @@ class TelaDeVendaTest extends TestCase
             ->assertOk()->assertSee('capa-thumb.jpg');
     }
 
+    // ─────────── destaque e ampliação no cardápio ───────────
+
+    private function comCapa(string $produtoNome = 'Camiseta Simpósio'): \App\Models\Livraria\Product
+    {
+        $produto = \App\Models\Livraria\Product::where('nome', $produtoNome)->firstOrFail();
+
+        \App\Models\Livraria\ProductPhoto::create([
+            'product_id' => $produto->id, 'caminho' => 'livraria/x/arte.jpg',
+            'caminho_thumb' => 'livraria/x/arte-thumb.jpg', 'capa' => true,
+            'ordem' => 1, 'created_at' => now(),
+        ]);
+
+        return $produto;
+    }
+
+    /**
+     * A capa carregada é sempre a MINIATURA; a grande fica guardada no botão e
+     * só é baixada quando alguém amplia. O cardápio abre no 4G do evento, e
+     * trinta imagens de 1200px na entrada seriam um cartaz que ninguém espera.
+     */
+    public function test_a_lista_usa_a_miniatura_e_guarda_a_grande_para_a_ampliacao(): void
+    {
+        $this->comCapa();
+
+        $html = $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['capas' => '1']))->assertOk()->getContent();
+
+        $this->assertStringContainsString('<img class="capa" src="', $html);
+        $this->assertStringContainsString('arte-thumb.jpg', $html);
+        $this->assertStringContainsString('data-grande="', $html);
+        $this->assertStringContainsString('arte.jpg', $html);
+    }
+
+    /**
+     * O destaque sai de um campo da CATEGORIA (booleano `destaque_cardapio`),
+     * não de coluna nova: quem decide é quem cadastra, pela tela de Categorias.
+     */
+    public function test_item_marcado_ganha_a_capa_dobrada(): void
+    {
+        $produto = $this->comCapa();
+
+        $html = fn () => $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['capas' => '1']))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('item  destaque', $html());
+
+        $produto->update(['atributos' => array_merge(
+            $produto->atributos ?? [], ['destaque_cardapio' => true]
+        )]);
+
+        $this->assertMatchesRegularExpression('/class="item\s*\w*\s*destaque"/', $html());
+    }
+
+    /**
+     * Procura `data-grande=`, e não a classe: "capa-toque" aparece no <style>
+     * da própria página, então a asserção pela classe passaria verde com
+     * qualquer coisa — o mesmo engano de procurar texto que mora no CSS.
+     */
+    /**
+     * O campo de destaque é um campo como qualquer outro: marcado como
+     * "mostrar na lista" no catálogo, seu valor viria junto dos destaques e a
+     * camiseta sairia com "— Sim" pendurado no nome. É instrução para o
+     * cardápio, não informação sobre o produto.
+     */
+    public function test_a_marca_de_destaque_nao_vira_texto_no_cardapio(): void
+    {
+        $produto = $this->comCapa();
+
+        $produto->category->fields()->create([
+            'chave' => 'destaque_cardapio', 'rotulo' => 'Destaque cardápio',
+            'tipo' => 'booleano', 'mostrar_na_lista' => true, 'ordem' => 9,
+        ]);
+
+        $produto->update(['atributos' => array_merge(
+            $produto->atributos ?? [], ['destaque_cardapio' => true]
+        )]);
+
+        $html = $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['capas' => '1']))->assertOk()->getContent();
+
+        // a capa dobra…
+        $this->assertMatchesRegularExpression('/class="item\s*\w*\s*destaque"/', $html);
+        // …mas o "Sim" não aparece ao lado do nome
+        $this->assertStringNotContainsString('class="detalhe">— Sim', $html);
+    }
+
+    public function test_sem_capa_nao_ha_o_que_ampliar(): void
+    {
+        $html = $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['capas' => '1']))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-grande=', $html, 'item sem foto não vira botão');
+
+        // e com foto, vira
+        $this->comCapa();
+
+        $this->assertStringContainsString('data-grande=', $this->actingAs($this->voluntario)
+            ->get(route('livraria.menu', ['capas' => '1']))->getContent());
+    }
+
     public function test_o_cardapio_exige_ver_a_livraria(): void
     {
         $estranho = User::create(['name' => 'X', 'email' => 'm'.uniqid().'@ipccg.org.br',

@@ -18,6 +18,7 @@
     use App\Models\Event;
     use App\Models\Livraria\Copy;
     use App\Models\Livraria\ShipmentItem;
+    use Illuminate\Support\Str;
 
     /* Esta página atende DOIS públicos pela mesma view: o operador logado
        (Venda → Imprimir cardápio) e o participante, sem login nenhum.
@@ -78,9 +79,27 @@
             return (object) [
                 'nome'       => $primeiro->product->nome,
                 'categoria'  => $primeiro->product->category->nome,
-                'detalhe'    => collect($primeiro->product->destaques())->pluck('valor')->join(' · '),
+                /* ⚠ `destaque_cardapio` sai do detalhe. Ele é um campo como
+                   qualquer outro, então se for marcado como "mostrar na lista"
+                   no catálogo, o valor apareceria aqui — e a camiseta sairia
+                   com "— Sim" pendurado no nome. É instrução para o cardápio,
+                   não informação sobre o produto. */
+                'detalhe'    => collect($primeiro->product->destaques())
+                                    ->reject(fn ($d) => Str::slug($d['rotulo'] ?? '', '_') === 'destaque_cardapio'
+                                        || in_array(Str::lower($d['valor'] ?? ''), ['sim', 'não', 'nao', '1'], true)
+                                            && Str::contains(Str::lower(Str::ascii($d['rotulo'] ?? '')), 'destaque'))
+                                    ->pluck('valor')->join(' · '),
                 'preco'      => (float) $primeiro->preco_venda,
                 'capa'       => $primeiro->product->coverPhoto,
+                /* Destaque SEM coluna nova: o catálogo já tem campos por
+                   categoria, e um booleano de chave `destaque_cardapio` marca
+                   quem merece a capa dobrada. Camiseta tem arte para ver; livro
+                   se reconhece pela capa pequena. Quem decide é quem cadastra,
+                   pela tela de Categorias — não um deploy. */
+                'destaque'   => filter_var(
+                    $primeiro->product->atributo('destaque_cardapio'),
+                    FILTER_VALIDATE_BOOLEAN,
+                ),
                 'disponiveis' => (int) $grupo->sum('disponiveis'),
                 'esgotado'   => $grupo->sum('disponiveis') === 0,
                 /* Cada tamanho com o seu saldo, e não uma tira de nomes: quem
@@ -196,6 +215,16 @@
             object-fit: contain; background: #F4F5F2;
             border-radius: 2px; align-self: center;
         }
+        /* O dobro, para a arte da camiseta aparecer. */
+        .item.destaque .capa { width: 68px; height: 92px; flex-basis: 68px; }
+
+        /* Capa clicável: o cursor e o realce dizem que há mais para ver — sem
+           isso ninguém descobre que dá para ampliar. */
+        button.capa-toque {
+            border: 0; padding: 0; background: none; cursor: zoom-in;
+            display: flex; align-items: center;
+        }
+        button.capa-toque:hover .capa { outline: 2px solid var(--ambar); outline-offset: 1px; }
         .nome { font-weight: 700; font-size: 15px; }
         .detalhe { font-style: italic; color: var(--fraco); font-weight: 400; font-size: 13px; }
         /* Um bloco por tamanho, com o saldo. Separados por caixa e não por
@@ -274,9 +303,32 @@
         .sem-resultado { display: none; text-align: center; color: var(--fraco); padding: 26px 0; }
         [hidden] { display: none !important; }
 
+        /* ── ampliar a imagem ──
+           Fundo quase opaco e imagem grande: quem abriu quer ver a ARTE, e
+           qualquer moldura disputando atenção atrapalha. */
+        .lupa {
+            position: fixed; inset: 0; z-index: 50;
+            display: none; align-items: center; justify-content: center;
+            padding: 20px; background: rgba(20,24,21,.92);
+        }
+        .lupa[open] { display: flex; }
+        .lupa img {
+            max-width: min(92vw, 720px); max-height: 78vh;
+            object-fit: contain; border-radius: 6px; background: #fff;
+        }
+        .lupa-caixa { text-align: center; color: #fff; }
+        .lupa-nome { margin-top: 14px; font-size: 17px; font-weight: 700; }
+        .lupa-preco { margin-top: 4px; font-size: 16px; color: #E6B872; font-weight: 700; }
+        .lupa-fechar {
+            position: absolute; top: 14px; right: 16px;
+            border: 0; background: none; color: #fff; font-size: 30px;
+            line-height: 1; padding: 6px 10px; cursor: pointer;
+        }
+
         @media print {
             body { padding: 0; }
-            .acoes, .busca { display: none; }
+            .acoes, .busca, .lupa { display: none !important; }
+            button.capa-toque { cursor: default }
             /* o título repete se o cardápio passar de uma folha */
             .item { page-break-inside: avoid; }
             .secao { page-break-after: avoid; }
@@ -327,14 +379,24 @@
                      assim o JS só compara strings, e buscar "simposio" acha
                      "Simpósio" sem o celular ter de normalizar a lista toda a
                      cada tecla. --}}
-                <div class="item {{ $i->esgotado ? 'fora' : '' }}"
+                <div class="item {{ $i->esgotado ? 'fora' : '' }} {{ $i->destaque ? 'destaque' : '' }}"
                      data-secao="{{ $categoria }}"
                      data-busca="{{ Str::lower(Str::ascii(
                          $i->nome.' '.$i->detalhe.' '.$categoria.' '.$i->tamanhos->pluck('nome')->join(' ')
                      )) }}">
                     @if ($comCapa)
                         @if ($i->capa)
-                            <img class="capa" src="{{ $i->capa->urlThumb() }}" alt="">
+                            {{-- A grande só é baixada quando alguém amplia: o
+                                 cardápio abre no 4G do evento, e trinta
+                                 imagens de 1200px na entrada seriam um cartaz
+                                 que ninguém espera carregar. --}}
+                            <button type="button" class="capa-toque"
+                                    data-grande="{{ $i->capa->url() }}"
+                                    data-nome="{{ $i->nome }}"
+                                    data-preco="R$ {{ number_format($i->preco, 2, ',', '.') }}"
+                                    aria-label="Ampliar a imagem de {{ $i->nome }}">
+                                <img class="capa" src="{{ $i->capa->urlThumb() }}" alt="" loading="lazy">
+                            </button>
                         @else
                             <span class="capa"></span>
                         @endif
@@ -380,6 +442,17 @@
 
         <p class="sem-resultado" id="sem-resultado">Nada encontrado.</p>
 
+        {{-- A lupa vive fora da lista: uma só, reaproveitada por todos os
+             itens, em vez de um overlay escondido por linha. --}}
+        <div class="lupa" id="lupa" role="dialog" aria-modal="true" aria-label="Imagem ampliada">
+            <button type="button" class="lupa-fechar" id="lupa-fechar" aria-label="Fechar">✕</button>
+            <div class="lupa-caixa">
+                <img id="lupa-img" src="" alt="">
+                <p class="lupa-nome" id="lupa-nome"></p>
+                <p class="lupa-preco" id="lupa-preco"></p>
+            </div>
+        </div>
+
         @if ($itens->isNotEmpty())
             <div class="rodape">
                 Preços sujeitos à disponibilidade ·
@@ -419,6 +492,36 @@
                 nada.style.display = achou === 0 ? 'block' : 'none';
                 limpar.hidden = campo.value === '';
             }
+
+            // ── ampliar a imagem ──
+            const lupa  = document.getElementById('lupa');
+            const limg  = document.getElementById('lupa-img');
+            const lnome = document.getElementById('lupa-nome');
+            const lpre  = document.getElementById('lupa-preco');
+
+            function abrir(botao) {
+                limg.src       = botao.dataset.grande;
+                limg.alt       = botao.dataset.nome;
+                lnome.textContent = botao.dataset.nome;
+                lpre.textContent  = botao.dataset.preco;
+                lupa.setAttribute('open', '');
+            }
+
+            function fechar() {
+                lupa.removeAttribute('open');
+                // solta a imagem grande da memória: num celular modesto,
+                // trinta capas de 1200px abertas em sequência pesam
+                limg.src = '';
+            }
+
+            document.querySelectorAll('.capa-toque').forEach((b) => {
+                b.addEventListener('click', () => abrir(b));
+            });
+
+            document.getElementById('lupa-fechar').addEventListener('click', fechar);
+            // clicar no fundo fecha; clicar na própria imagem, não
+            lupa.addEventListener('click', (e) => { if (e.target === lupa) fechar(); });
+            window.addEventListener('keydown', (e) => { if (e.key === 'Escape') fechar(); });
 
             campo.addEventListener('input', filtrar);
             limpar.addEventListener('click', () => { campo.value = ''; campo.focus(); filtrar(); });

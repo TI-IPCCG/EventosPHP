@@ -305,6 +305,70 @@ class CredencialTest extends TestCase
         $this->assertStringContainsString('SMTP', $i->fresh()->qr_erro);
     }
 
+    /**
+     * ⚠ A GARANTIA QUE O DISPARO INTEIRO DEPENDE: falha NUNCA é marcada como
+     * envio.
+     *
+     * Se `qr_enviado_em` fosse gravado antes do SMTP responder, a pessoa sairia
+     * da fila sem ter recebido nada — e ninguém descobriria até ela chegar na
+     * portaria sem QR. Por isso o campo só é escrito DEPOIS de Mail::send()
+     * retornar sem exceção, e este teste existe para que continue assim.
+     */
+    public function test_falha_nao_marca_como_enviado_e_a_pessoa_continua_na_fila(): void
+    {
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP fora do ar'));
+
+        $i = $this->inscrito('Nao Recebeu');
+
+        app(EnvioService::class)->enviarLote($this->evento);
+
+        $depois = $i->fresh();
+
+        $this->assertNull($depois->qr_enviado_em, 'falha não pode contar como enviado');
+        $this->assertNotNull($depois->qr_erro, 'e o motivo tem de ficar registrado');
+        $this->assertSame(0, app(EnvioService::class)->enviados($this->evento));
+
+        // e volta para a fila assim que a reserva expira — não fica esquecida
+        $depois->update(['qr_reservado_em' => $this->evento->agora()->subMinutes(10)]);
+        $this->assertSame(1, app(EnvioService::class)->pendentes($this->evento));
+    }
+
+    /**
+     * Num lote, o que falhou não contamina o que deu certo, e vice-versa: cada
+     * linha carrega o próprio estado.
+     */
+    public function test_falha_de_um_nao_marca_nem_desmarca_os_outros(): void
+    {
+        $bom  = $this->inscrito('Recebeu');
+        $ruim = $this->inscrito('Nao Recebeu');
+
+        // só o segundo falha
+        Mail::shouldReceive('to')->once()->andReturnSelf();
+        Mail::shouldReceive('send')->once()->andReturnNull();
+        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('caixa cheia'));
+
+        app(EnvioService::class)->enviarLote($this->evento);
+
+        $this->assertNotNull($bom->fresh()->qr_enviado_em);
+        $this->assertNull($ruim->fresh()->qr_enviado_em);
+    }
+
+    /**
+     * CredencialMail NÃO pode virar ShouldQueue.
+     *
+     * Enfileirado, Mail::send() devolve na hora e a exceção do SMTP acontece no
+     * worker — que em produção não existe (QUEUE_CONNECTION=sync, sem tabela
+     * jobs, sem cron). O envio passaria a ser marcado como sucesso sempre, e o
+     * erro sumiria: exatamente o cenário que este módulo evita.
+     */
+    public function test_a_credencial_nao_pode_ser_enfileirada(): void
+    {
+        $this->assertNotInstanceOf(
+            \Illuminate\Contracts\Queue\ShouldQueue::class,
+            new CredencialMail($this->inscrito('Qualquer'), 'https://exemplo.test/x', null),
+        );
+    }
+
     public function test_falha_nao_queima_as_tentativas_de_uma_vez(): void
     {
         // Com o servidor de e-mail fora do ar, devolver a pessoa à fila na hora
