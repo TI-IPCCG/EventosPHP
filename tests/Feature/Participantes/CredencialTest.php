@@ -424,6 +424,63 @@ class CredencialTest extends TestCase
 
     // ── a tela ──────────────────────────────────────────────────────
 
+    // ─────────── o convite ao cardápio ───────────
+
+    private function comEstoque(): void
+    {
+        $cat  = \App\Models\Livraria\Category::create(['church_id' => 1,
+            'nome' => 'Livro '.uniqid(), 'slug' => 'liv-'.uniqid(), 'usa_variacao' => false]);
+        $forn = \App\Models\Livraria\Supplier::create(['church_id' => 1,
+            'nome' => 'Editora '.uniqid(), 'prefixo' => bin2hex(random_bytes(2))]);
+
+        $rem = \App\Models\Livraria\Shipment::create(['event_id' => $this->evento->id,
+            'supplier_id' => $forn->id, 'condicao' => 'firme']);
+
+        $prod = \App\Models\Livraria\Product::create(['church_id' => 1,
+            'category_id' => $cat->id, 'supplier_id' => $forn->id, 'nome' => 'Livro do Menu']);
+
+        $item = \App\Models\Livraria\ShipmentItem::create(['shipment_id' => $rem->id,
+            'product_id' => $prod->id, 'quantidade' => 1,
+            'custo_unitario' => 20, 'preco_venda' => 40]);
+
+        \App\Models\Livraria\Copy::create(['event_id' => $this->evento->id,
+            'shipment_item_id' => $item->id, 'codigo' => 'MEN'.random_int(1000, 9999)]);
+    }
+
+    public function test_o_email_convida_para_o_cardapio_quando_ha_estoque(): void
+    {
+        $this->comEstoque();
+
+        $html = (new CredencialMail($this->inscrito(), 'https://exemplo.test/c', null))->render();
+
+        $this->assertStringContainsString('menu de itens disponíveis', $html);
+        $this->assertStringContainsString(route('livraria.cardapio'), $html);
+    }
+
+    /**
+     * Sem livraria montada, nada de convite: o link levaria a uma página que
+     * diz "nenhum item disponível", e convite que não se cumpre é pior do que
+     * convite nenhum.
+     */
+    public function test_sem_estoque_o_email_nao_convida(): void
+    {
+        $html = (new CredencialMail($this->inscrito(), 'https://exemplo.test/c', null))->render();
+
+        $this->assertStringNotContainsString('menu de itens disponíveis', $html);
+    }
+
+    /** O QR continua sendo o motivo da mensagem — o convite não pode ofuscá-lo. */
+    public function test_o_convite_nao_substitui_a_credencial(): void
+    {
+        $this->comEstoque();
+
+        $inscrito = $this->inscrito('Com Menu');
+        $html = (new CredencialMail($inscrito, 'https://exemplo.test/c', null))->render();
+
+        $this->assertStringContainsString($inscrito->codigo, $html);
+        $this->assertStringContainsString('https://exemplo.test/c', $html);
+    }
+
     public function test_a_tela_de_inscritos_conta_as_credenciais(): void
     {
         // O envio foi absorvido por Inscritos: no dia a dia "quem está inscrito"

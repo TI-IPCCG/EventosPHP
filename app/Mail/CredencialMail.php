@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Models\Livraria\Copy;
 use App\Models\Participantes\Registration;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -22,6 +23,10 @@ use Illuminate\Queue\SerializesModels;
  *     valor por linha do plano inteiro: resolve tela rachada, câmera ruim, QR
  *     borrado na impressão e celular sem bateria emprestado do vizinho;
  *  3. o LINK da credencial, que abre a versão imprimível.
+ *
+ * E, quando há livraria montada, um convite discreto para o cardápio. Discreto
+ * é o ponto: a mensagem existe para a pessoa guardar a credencial, e um anúncio
+ * competindo com o QR faria mal às duas coisas.
  */
 class CredencialMail extends Mailable
 {
@@ -49,6 +54,22 @@ class CredencialMail extends Mailable
      */
     public function content(): Content
     {
-        return new Content(view: 'emails.credencial');
+        return new Content(view: 'emails.credencial', with: [
+            'urlMenu' => $this->temCardapio() ? route('livraria.cardapio') : null,
+        ]);
+    }
+
+    /**
+     * Só convida para o cardápio se houver o que mostrar.
+     *
+     * Evento sem livraria montada — ou com tudo esgotado — mandaria a pessoa
+     * para uma página que diz "nenhum item disponível". Um convite que não se
+     * cumpre é pior do que convite nenhum.
+     */
+    private function temCardapio(): bool
+    {
+        return Copy::where('event_id', $this->inscricao->event_id)
+            ->where('status', Copy::DISPONIVEL)
+            ->exists();
     }
 }

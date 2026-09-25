@@ -58,6 +58,25 @@
                     <p style="margin:0 0 20px;font-size:12px;color:#5A7161;word-break:break-all">
                         Se o botão não funcionar, copie e cole no navegador:<br>{{ $urlCredencial }}
                     </p>
+
+                    {{-- O convite ao cardápio: separado por um filete, em tom
+                         menor e sem botão verde, para não competir com o QR —
+                         que é o motivo de a mensagem existir. --}}
+                    @if ($urlMenu ?? null)
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                               style="border-top:1px solid #D9DBD6;margin-top:4px">
+                            <tr><td style="padding-top:16px">
+                                <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#1D2B23">
+                                    ☕ Vamos ter uma mesa de livros e camisetas no evento.
+                                </p>
+                                <p style="margin:0;font-size:14px;line-height:1.6">
+                                    <a href="{{ $urlMenu }}" style="color:#BD7522;font-weight:bold;text-decoration:underline">
+                                        Acesse aqui o nosso menu de itens disponíveis
+                                    </a>
+                                </p>
+                            </td></tr>
+                        </table>
+                    @endif
                 </td></tr>
             </table>
         </td></tr>
