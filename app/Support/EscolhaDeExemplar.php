@@ -122,6 +122,39 @@ trait EscolhaDeExemplar
             ->get();
     }
 
+    /**
+     * Pega os N primeiros exemplares livres da linha, de uma vez.
+     *
+     * Escolher um a um é correto para uma troca (o operador tem AQUELE livro na
+     * mão), e insuportável para um acerto de estoque de dez camisetas. Aqui a
+     * pergunta é "quantas", não "quais" — mas o sistema continua registrando
+     * quais saíram, porque é o código que faz a conferência física fechar.
+     *
+     * Ordena por código: some primeiro o fim da sequência, preservando os
+     * números baixos, mesma regra da redução de remessa.
+     */
+    public function adicionarVarios(int $shipmentItemId, $quantidade): void
+    {
+        // vem de <input type=number>, então é entrada de usuário: sem o teto,
+        // um zero a mais varre a linha inteira sem querer
+        $quantas = max(1, min(500, (int) $quantidade));
+
+        $novos = Copy::where('event_id', $this->eventoDaEscolha()?->id)
+            ->where('shipment_item_id', $shipmentItemId)
+            ->where('status', Copy::DISPONIVEL)
+            ->when($this->exemplaresJaEscolhidos(), fn ($q, $ids) => $q->whereNotIn('id', $ids))
+            ->orderByDesc('codigo')
+            ->limit($quantas)
+            ->pluck('id')
+            ->all();
+
+        $this->absorverEscolhidos($novos);
+        $this->recalcularEscolha();
+    }
+
+    /** Como o componente guarda o que foi escolhido — cada tela tem o seu campo. */
+    abstract protected function absorverEscolhidos(array $copyIds): void;
+
     public function abrirLinha(int $shipmentItemId): void
     {
         $this->linhaAberta = $shipmentItemId;

@@ -66,6 +66,27 @@ class TelasParticipantesTest extends TestCase
         return $u;
     }
 
+    /**
+     * Deixa o evento com UM dia só, e esse dia é hoje.
+     *
+     * ⚠ Não basta mudar a data de um dos dias: o evento nasce com 25 e 26 de
+     * setembro, e mexer no primeiro estoura a UNIQUE (event_id, data) quando
+     * HOJE é o dia 26 — que é o que aconteceu, e fez dois testes quebrarem
+     * sozinhos ao virar a data. Teste de portaria não pode depender do
+     * calendário da máquina.
+     */
+    private function soHoje(): EventDay
+    {
+        EventDay::where('event_id', $this->evento->id)->delete();
+
+        return EventDay::create([
+            'event_id' => $this->evento->id,
+            'data'     => $this->evento->agora()->toDateString(),
+            'nome'     => 'Hoje',
+            'ativo'    => true,
+        ]);
+    }
+
     private function inscrito(string $nome): Registration
     {
         return $this->inscricoes->inscrever($this->evento, [
@@ -119,6 +140,7 @@ class TelasParticipantesTest extends TestCase
 
     public function test_confirmar_registra_a_entrada_e_limpa_a_busca(): void
     {
+        $hoje = $this->soHoje();
         $i = $this->inscrito('Confirma Silva');
 
         Livewire::actingAs($this->coord)->test('participantes.checkin')
@@ -126,7 +148,8 @@ class TelasParticipantesTest extends TestCase
             ->call('confirmar', $i->id)
             ->assertSet('busca', '');
 
-        $this->assertTrue($i->fresh()->presenteEm(EventDay::where('event_id', $this->evento->id)->first()->id));
+        // o dia do check-in é HOJE, não "o primeiro da lista"
+        $this->assertTrue($i->fresh()->presenteEm($hoje->id));
     }
 
     public function test_confirmar_duas_vezes_avisa_em_vez_de_estourar(): void
@@ -227,10 +250,7 @@ class TelasParticipantesTest extends TestCase
         $veio = $this->inscrito('Ja Chegou');
         $naoVeio = $this->inscrito('Nao Chegou');
 
-        // Só UM dia vira hoje: dois com a mesma data violariam a UNIQUE
-        // (event_id, data) — que é justamente o que ela existe para impedir.
-        EventDay::where('event_id', $this->evento->id)->orderBy('data')->first()
-            ->update(['data' => $this->evento->agora()->toDateString()]);
+        $this->soHoje();
 
         Livewire::actingAs($this->coord)->test('participantes.checkin')->call('confirmar', $veio->id);
 

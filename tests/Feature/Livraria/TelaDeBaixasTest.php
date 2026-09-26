@@ -202,6 +202,102 @@ class TelaDeBaixasTest extends TestCase
         $this->assertSame(0.0, $componente->instance()->custoPrevisto);
     }
 
+    // ────────────── escolher em lote (acerto de estoque) ──────────────
+    //
+    // Escolher um a um é certo numa troca — o operador tem AQUELE item na mão.
+    // Num acerto de estoque a pergunta é outra ("quantas sumiram"), e dez
+    // camisetas uma a uma é insuportável. O sistema continua registrando QUAIS
+    // saíram, porque é o código que faz a conferência física fechar.
+
+    public function test_pega_varios_exemplares_de_uma_vez(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $componente = $this->tela()
+            ->call('abrirLinha', $shipmentItemId)
+            ->call('adicionarVarios', $shipmentItemId, 5);
+
+        $this->assertCount(5, $componente->instance()->escolhidos);
+    }
+
+    /** Pega dos códigos mais altos, preservando os primeiros da sequência. */
+    public function test_o_lote_tira_do_fim_da_sequencia(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $escolhidos = $this->tela()
+            ->call('adicionarVarios', $shipmentItemId, 2)
+            ->instance()->escolhidos;
+
+        $this->assertContains($this->copies['B8']->id, $escolhidos);
+        $this->assertContains($this->copies['B7']->id, $escolhidos);
+        $this->assertNotContains($this->copies['B1']->id, $escolhidos);
+    }
+
+    public function test_o_lote_nao_repete_o_que_ja_esta_no_rascunho(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $componente = $this->tela()
+            ->call('adicionarExemplar', $this->copies['B8']->id)
+            ->call('adicionarVarios', $shipmentItemId, 3);
+
+        $escolhidos = $componente->instance()->escolhidos;
+
+        $this->assertCount(4, $escolhidos, 'um já estava + três novos');
+        $this->assertSame(count($escolhidos), count(array_unique($escolhidos)));
+    }
+
+    public function test_o_lote_nao_pega_exemplar_ja_baixado(): void
+    {
+        $this->darBaixa(['B1', 'B2']);
+        $shipmentItemId = $this->copies['B3']->shipment_item_id;
+
+        $escolhidos = $this->tela()
+            ->call('adicionarVarios', $shipmentItemId, 10)
+            ->instance()->escolhidos;
+
+        $this->assertCount(6, $escolhidos, 'oito menos os dois já baixados');
+        $this->assertNotContains($this->copies['B1']->id, $escolhidos);
+    }
+
+    /**
+     * O número vem de um <input>, então é entrada de usuário: sem teto, um zero
+     * a mais varreria a linha inteira sem querer.
+     */
+    public function test_o_lote_tem_limites_de_sanidade(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        // pedir mais do que existe traz o que existe, e não estoura
+        $this->assertCount(8, $this->tela()
+            ->call('adicionarVarios', $shipmentItemId, 99999)
+            ->instance()->escolhidos);
+
+        // zero ou negativo vira um
+        $this->assertCount(1, $this->tela()
+            ->call('adicionarVarios', $shipmentItemId, 0)
+            ->instance()->escolhidos);
+    }
+
+    /** E o lote leva mesmo à baixa, com o custo somado de todos. */
+    public function test_baixa_em_lote_registra_todos(): void
+    {
+        $shipmentItemId = $this->copies['B1']->shipment_item_id;
+
+        $this->tela()
+            ->call('escolherMotivo', $this->sorteio->id)
+            ->set('autorizado_por', 'Pr. Fulano')
+            ->call('adicionarVarios', $shipmentItemId, 4)
+            ->call('registrar')
+            ->assertHasNoErrors();
+
+        $baixa = Writeoff::where('event_id', $this->evento->id)->first();
+
+        $this->assertSame(4, $baixa->items()->count());
+        $this->assertSame(120.0, EventResult::para($this->evento)->devidoFornecedores());
+    }
+
     // ─────────────────────────── recusas ───────────────────────────
 
     public function test_exige_motivo_autorizacao_e_exemplar(): void

@@ -56,6 +56,9 @@ class extends Component {
 
     /** rascunho da baixa */
     public ?int $reason_id = null;
+
+    /** Quantos pegar de uma vez, no acerto de estoque. */
+    public int $quantidadeLote = 1;
     public string $autorizado_por = '';
     public string $observacao = '';
     public array $escolhidos = [];
@@ -138,6 +141,13 @@ class extends Component {
     public function jaEscolhido(int $copyId): bool
     {
         return in_array($copyId, $this->escolhidos, true);
+    }
+
+    protected function absorverEscolhidos(array $copyIds): void
+    {
+        $this->escolhidos = array_values(array_unique([...$this->escolhidos, ...$copyIds]));
+
+        unset($this->selecionados, $this->custoPrevisto);
     }
 
     #[Computed]
@@ -354,6 +364,7 @@ class extends Component {
                     'acaoEscolher' => 'adicionarExemplar',
                     'acaoTirar'    => 'removerExemplar',
                     'valor'        => 'custo',
+                    'lote'         => true,
                 ])
 
                 {{-- O número que muda a decisão, ANTES de confirmar. --}}

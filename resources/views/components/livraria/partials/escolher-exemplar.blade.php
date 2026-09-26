@@ -9,9 +9,15 @@
       $acaoEscolher  método do componente que RECEBE o copy_id
       $acaoTirar     método que devolve o exemplar ao estoque do rascunho
       $valor         'custo' ou 'preco' — qual número a linha mostra
-      $rotuloValor   o que esse número significa para quem está olhando
+      $lote          true libera "pegar N de uma vez" no pop-up
+
+    O lote é opcional de propósito: numa TROCA a pergunta é "qual exemplar o
+    comprador trouxe", e oferecer quantidade ali só atrapalharia. Num acerto de
+    estoque a pergunta é outra — "quantas sumiram" — e escolher dez camisetas
+    uma a uma é insuportável.
 --}}
 @php($campoValor = $valor ?? 'preco')
+@php($permiteLote = $lote ?? false)
 
 <div class="venda-busca" style="margin-top:.8rem">
     <i class="bi bi-search"></i>
@@ -76,7 +82,29 @@
             </div>
 
             <div class="modal-body">
-                <p class="venda-dica">Escolha o exemplar.</p>
+                @if ($permiteLote)
+                    @php($livres = $this->exemplaresDaLinha->reject(fn ($c) => $this->jaEscolhido($c->id))->count())
+                    <div class="lote-rapido">
+                        <label for="lote-qtd">Pegar de uma vez</label>
+                        <div class="lote-campos">
+                            <input id="lote-qtd" type="number" min="1" max="{{ max(1, $livres) }}"
+                                   wire:model="quantidadeLote" inputmode="numeric">
+                            <button type="button" class="btn-sm"
+                                    wire:click="adicionarVarios({{ $linhaAberta }}, $wire.quantidadeLote)"
+                                    @disabled($livres === 0)>
+                                Adicionar
+                            </button>
+                        </div>
+                        <small class="ajuda">
+                            {{ $livres }} {{ $livres == 1 ? 'livre' : 'livres' }} nesta linha.
+                            O sistema escolhe pelos códigos mais altos, preservando os primeiros.
+                        </small>
+                    </div>
+                @endif
+
+                <p class="venda-dica">
+                    {{ $permiteLote ? 'Ou escolha um a um:' : 'Escolha o exemplar.' }}
+                </p>
 
                 <ul class="resumo-itens">
                     @foreach ($this->exemplaresDaLinha as $c)

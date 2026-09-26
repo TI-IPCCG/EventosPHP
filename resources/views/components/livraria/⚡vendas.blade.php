@@ -223,6 +223,16 @@ class extends Component {
         return in_array($copyId, $this->exemplaresJaEscolhidos(), true);
     }
 
+    /** O rascunho tem dois donos: `entrando` na troca, `itensFinais` na correção. */
+    protected function absorverEscolhidos(array $copyIds): void
+    {
+        $destino = $this->modo === 'trocar' ? 'entrando' : 'itensFinais';
+
+        $this->{$destino} = array_values(array_unique([...$this->{$destino}, ...$copyIds]));
+
+        unset($this->previaDaTroca);
+    }
+
     /**
      * A conta da troca, ao vivo: o que sai vale o preço REGISTRADO na venda,
      * o que entra vale o preço de hoje na remessa.
