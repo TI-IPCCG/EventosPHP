@@ -418,13 +418,29 @@ class extends Component {
                 </h2>
 
                 @if ($editandoLinha)
+                    @php($linhaAtual = $this->linhas->firstWhere('id', $editandoLinha))
                     <div class="alert warn" role="note">
-                        Item e {{ $this->produto?->usaVariacao() ? 'variação ficam' : 'variação ficam' }}
-                        travados: eles identificam a linha. Ajuste quantidade, custo e preço.
+                        Item e variação ficam travados: eles identificam a linha. Ajuste
+                        quantidade, custo e preço.
                         <br>
                         <small>Mudar o custo vale para as <strong>próximas</strong> vendas — o que já
                         foi vendido guarda o custo do dia, e é isso que o acerto do fornecedor usa.</small>
                     </div>
+
+                    @if ($linhaAtual && $linhaAtual->disponiveis != $linhaAtual->exemplares)
+                        {{-- O erro que essa conta evita: digitar o número que se quer VER
+                             no estoque, quando o campo pede o total de exemplares. --}}
+                        <div class="alert ok" role="note">
+                            Hoje esta linha tem <strong>{{ $linhaAtual->exemplares }} exemplares</strong>,
+                            dos quais <strong>{{ $linhaAtual->disponiveis }}</strong>
+                            {{ $linhaAtual->disponiveis == 1 ? 'está disponível' : 'estão disponíveis' }} —
+                            o restante já saiu.
+                            <br>
+                            <small>A quantidade abaixo é o <strong>total</strong>, não o disponível.
+                            Para colocar mais {{ $exemploAcrescimo = 2 }} na prateleira, digite
+                            <strong>{{ $linhaAtual->exemplares + $exemploAcrescimo }}</strong>.</small>
+                        </div>
+                    @endif
                 @endif
 
                 <form class="form" wire:submit="salvarLinha">
@@ -537,7 +553,16 @@ class extends Component {
                                 @if ($l->variacao) <span class="pill">{{ $l->variacao }}</span> @endif
                             </strong>
                             <small class="bloco">
+                                {{-- Dois números, e confundi-los custa caro: a QUANTIDADE
+                                     da remessa é tudo que já existiu (vendido, baixado ou
+                                     não), e é ela que o Editar ajusta. O disponível é o que
+                                     ainda está na caixa. Quem quer "mais dois na prateleira"
+                                     precisa somar à quantidade, não digitar o disponível. --}}
                                 {{ $l->exemplares }} {{ $l->exemplares == 1 ? 'exemplar' : 'exemplares' }}
+                                @if ($l->disponiveis != $l->exemplares)
+                                    · <strong>{{ $l->disponiveis }}</strong>
+                                    {{ $l->disponiveis == 1 ? 'disponível' : 'disponíveis' }}
+                                @endif
                                 @if ($l->primeiro_codigo)
                                     · {{ $l->primeiro_codigo }}@if ($l->ultimo_codigo !== $l->primeiro_codigo)–{{ $l->ultimo_codigo }}@endif
                                 @endif
