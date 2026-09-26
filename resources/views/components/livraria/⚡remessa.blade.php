@@ -419,26 +419,35 @@ class extends Component {
 
                 @if ($editandoLinha)
                     @php($linhaAtual = $this->linhas->firstWhere('id', $editandoLinha))
+                    {{-- ⚠ Tudo num <div> só: .alert é display:flex, então cada
+                         <strong>, <small> ou texto solto viraria uma COLUNA
+                         separada — o aviso saía picado em tiras verticais. --}}
                     <div class="alert warn" role="note">
-                        Item e variação ficam travados: eles identificam a linha. Ajuste
-                        quantidade, custo e preço.
-                        <br>
-                        <small>Mudar o custo vale para as <strong>próximas</strong> vendas — o que já
-                        foi vendido guarda o custo do dia, e é isso que o acerto do fornecedor usa.</small>
+                        <div>
+                            Item e variação ficam travados: eles identificam a linha. Ajuste
+                            quantidade, custo e preço.
+                            <br>
+                            <small>Mudar o custo vale para as <strong>próximas</strong> vendas — o
+                            que já foi vendido guarda o custo do dia, e é isso que o acerto do
+                            fornecedor usa.</small>
+                        </div>
                     </div>
 
                     @if ($linhaAtual && $linhaAtual->disponiveis != $linhaAtual->exemplares)
                         {{-- O erro que essa conta evita: digitar o número que se quer VER
                              no estoque, quando o campo pede o total de exemplares. --}}
                         <div class="alert ok" role="note">
-                            Hoje esta linha tem <strong>{{ $linhaAtual->exemplares }} exemplares</strong>,
-                            dos quais <strong>{{ $linhaAtual->disponiveis }}</strong>
-                            {{ $linhaAtual->disponiveis == 1 ? 'está disponível' : 'estão disponíveis' }} —
-                            o restante já saiu.
-                            <br>
-                            <small>A quantidade abaixo é o <strong>total</strong>, não o disponível.
-                            Para colocar mais {{ $exemploAcrescimo = 2 }} na prateleira, digite
-                            <strong>{{ $linhaAtual->exemplares + $exemploAcrescimo }}</strong>.</small>
+                            <div>
+                                Hoje esta linha tem
+                                <strong>{{ $linhaAtual->exemplares }} exemplares</strong>, dos quais
+                                <strong>{{ $linhaAtual->disponiveis }}</strong>
+                                {{ $linhaAtual->disponiveis == 1 ? 'está disponível' : 'estão disponíveis' }}
+                                — o restante já saiu.
+                                <br>
+                                <small>A quantidade abaixo é o <strong>total</strong>, não o
+                                disponível. Para colocar mais 2 na prateleira, digite
+                                <strong>{{ $linhaAtual->exemplares + 2 }}</strong>.</small>
+                            </div>
                         </div>
                     @endif
                 @endif
