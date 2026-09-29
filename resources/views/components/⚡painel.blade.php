@@ -54,6 +54,31 @@ class extends Component {
     }
 
     /** Títulos esgotados ou no fim: 2 exemplares ou menos. */
+    /**
+     * O evento partido por fornecedor, com a escala do gráfico já resolvida.
+     *
+     * A escala é ÚNICA para todos: uma barra por linha, cada uma com seu
+     * próprio máximo, faria fornecedores de tamanhos diferentes parecerem
+     * iguais — que é o erro mais comum deste tipo de gráfico.
+     */
+    #[Computed]
+    public function fornecedores(): array
+    {
+        if (! $this->evento) {
+            return [];
+        }
+
+        $linhas = EventResult::para($this->evento)->porFornecedor();
+
+        // o teto vem do maior valor absoluto da tabela inteira; `igreja` pode
+        // ser negativo (vendeu abaixo do custo) e o módulo evita barra invisível
+        $teto = collect($linhas)
+            ->flatMap(fn ($l) => [$l['custo_total'], $l['devido'], abs($l['igreja'])])
+            ->max() ?: 1;
+
+        return collect($linhas)->map(fn ($l) => $l + ['teto' => $teto])->all();
+    }
+
     #[Computed]
     public function atencao()
     {
@@ -165,6 +190,58 @@ class extends Component {
                 <p class="vazio">Nenhum item no fim do estoque. Tudo tranquilo.</p>
             @endforelse
         </section>
+
+        {{-- ── POR FORNECEDOR ──────────────────────────────────────
+             Três perguntas diferentes, lado a lado: quanto veio dele, quanto
+             sai do caixa para ele, e quanto fica para a igreja. As duas
+             últimas somam a receita que os itens dele geraram.
+
+             Barras horizontais porque nome de editora é longo, e escala única
+             porque o que interessa é comparar fornecedores entre si. --}}
+        @if ($this->fornecedores)
+            <section class="card">
+                <h2 class="card-titulo"><i class="bi bi-shop"></i> Por fornecedor</h2>
+
+                {{-- Legenda sempre presente: a diferença entre âmbar e verde cai
+                     para ΔE 6,6 em protanopia, então a cor sozinha não pode
+                     carregar a identidade — o valor escrito em cada barra é a
+                     segunda pista, e a legenda a terceira. --}}
+                <div class="forn-legenda">
+                    <span><i class="forn-chave veio"></i> Veio na remessa</span>
+                    <span><i class="forn-chave devido"></i> Devido ao fornecedor</span>
+                    <span><i class="forn-chave igreja"></i> Fica para a igreja</span>
+                </div>
+
+                @foreach ($this->fornecedores as $f)
+                    <div class="forn-bloco">
+                        <div class="forn-nome">{{ $f['fornecedor'] }}</div>
+
+                        @foreach ([
+                            ['veio',   'Veio na remessa',      $f['custo_total']],
+                            ['devido', 'Devido ao fornecedor', $f['devido']],
+                            ['igreja', 'Fica para a igreja',   $f['igreja']],
+                        ] as [$classe, $rotulo, $valor])
+                            <div class="forn-linha">
+                                <div class="forn-trilho"
+                                     title="{{ $rotulo }}: R$ {{ number_format($valor, 2, ',', '.') }}">
+                                    <div class="forn-barra {{ $classe }} {{ $valor < 0 ? 'negativa' : '' }}"
+                                         style="width: {{ max(1.5, abs($valor) / $f['teto'] * 100) }}%"></div>
+                                </div>
+                                <span class="forn-valor {{ $valor < 0 ? 'negativo' : '' }}">
+                                    R$ {{ number_format($valor, 2, ',', '.') }}
+                                </span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+
+                <p class="forn-nota">
+                    <strong>Devido</strong> e <strong>fica para a igreja</strong> somados são a
+                    receita que os itens deste fornecedor geraram. O que veio e não vendeu
+                    volta para ele — por isso a primeira barra costuma ser a maior.
+                </p>
+            </section>
+        @endif
 
         {{-- ── COMPOSIÇÃO DO PAGAMENTO ─────────────────────────── --}}
         @if ($a['pagamentos'])

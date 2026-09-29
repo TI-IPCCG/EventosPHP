@@ -290,6 +290,77 @@ class ResultadoDoEventoTest extends TestCase
     }
 
     /** Devolvidos não geram dívida: é o que a consignação significa. */
+    // ─────────────────── o evento por fornecedor ───────────────────
+    //
+    // Três perguntas distintas, e é a distinção que o gráfico do painel existe
+    // para mostrar: quanto veio da editora, quanto sai do caixa para ela, e
+    // quanto fica para a igreja.
+
+    public function test_por_fornecedor_separa_o_que_veio_do_que_e_devido(): void
+    {
+        // Livro A: custo 30, venda 45 — cinco exemplares vieram, dois venderam
+        $this->vender(['LA001', 'LA002'], $this->pix);
+
+        $editora = collect(EventResult::para($this->evento)->porFornecedor())
+            ->firstWhere('fornecedor', 'Editora T');
+
+        // 5 livros A (30) + 5 livros B (24) = 150 + 120
+        $this->assertSame(270.0, $editora['custo_total'], 'tudo que veio, ao custo');
+        $this->assertSame(60.0, $editora['devido'], 'só os dois vendidos');
+        $this->assertSame(30.0, $editora['igreja'], 'receita 90 menos devido 60');
+    }
+
+    /** `devido + igreja` é a receita daquele fornecedor — é o que fecha a leitura. */
+    public function test_devido_mais_igreja_da_a_receita_do_fornecedor(): void
+    {
+        $this->vender(['LA001', 'LB001'], $this->pix);
+
+        $editora = collect(EventResult::para($this->evento)->porFornecedor())
+            ->firstWhere('fornecedor', 'Editora T');
+
+        $this->assertSame(81.0, $editora['devido'] + $editora['igreja']);   // 45 + 36
+    }
+
+    /** Baixa que gera custo é devida igual ao vendido, mas não traz receita. */
+    public function test_baixa_com_custo_entra_no_devido_do_fornecedor(): void
+    {
+        $this->baixar(['LA001'], geraCusto: true);
+
+        $editora = collect(EventResult::para($this->evento)->porFornecedor())
+            ->firstWhere('fornecedor', 'Editora T');
+
+        $this->assertSame(30.0, $editora['devido']);
+        $this->assertSame(-30.0, $editora['igreja'], 'saiu sem receita: prejuízo naquele item');
+    }
+
+    /** Cada fornecedor com a sua conta — a camiseta não contamina a editora. */
+    public function test_os_fornecedores_nao_se_misturam(): void
+    {
+        $this->vender(['LA001'], $this->pix);          // editora
+        $this->vender(['CM001'], $this->pix);          // confecção
+
+        $porNome = collect(EventResult::para($this->evento)->porFornecedor())
+            ->keyBy('fornecedor');
+
+        $this->assertSame(30.0, $porNome['Editora T']['devido']);
+        $this->assertSame(20.0, $porNome['Confecção T']['devido']);
+        $this->assertSame(15.0, $porNome['Editora T']['igreja']);     // 45 − 30
+        $this->assertSame(20.0, $porNome['Confecção T']['igreja']);   // 40 − 20
+    }
+
+    public function test_venda_estornada_sai_da_conta_do_fornecedor(): void
+    {
+        $venda = $this->vender(['LA001'], $this->pix);
+        app(SaleService::class)->estornar($venda);
+
+        $editora = collect(EventResult::para($this->evento)->porFornecedor())
+            ->firstWhere('fornecedor', 'Editora T');
+
+        $this->assertSame(0.0, $editora['devido']);
+        $this->assertSame(0.0, $editora['igreja']);
+        $this->assertSame(270.0, $editora['custo_total'], 'mas o que veio continua lá');
+    }
+
     public function test_devolucao_mostra_o_custo_que_nao_foi_pago(): void
     {
         $this->vender(['LA001'], $this->pix);

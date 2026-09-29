@@ -2279,3 +2279,58 @@ body:has(.venda-fab) .toasts { top: 76px }
 .lote-rapido label { display: block; font-size: .8rem; margin-bottom: .35rem }
 .lote-campos { display: flex; gap: .5rem; align-items: center }
 .lote-campos input { width: 100px }
+
+/* ── Por fornecedor, no painel ────────────────────────────────────
+   Barras horizontais: nome de editora é longo, e na horizontal ele cabe
+   sem girar texto. A escala é ÚNICA para todos os fornecedores — barra
+   por barra com máximo próprio faria o pequeno parecer do tamanho do
+   grande, que é o erro clássico deste gráfico.
+
+   ⚠ As três cores passaram no validador de daltonismo, mas o par
+   âmbar/verde fica em ΔE 6,6 sob protanopia — dentro da faixa que só é
+   aceitável COM codificação secundária. Por isso o valor vai escrito em
+   cada barra e a legenda é fixa: a cor é a terceira pista, nunca a
+   única.                                                                */
+.forn-legenda {
+  display: flex; flex-wrap: wrap; gap: .4rem 1.1rem;
+  margin-bottom: 1rem; font-size: .78rem; color: var(--muted-fg);
+}
+.forn-legenda span { display: inline-flex; align-items: center; gap: .4rem }
+.forn-chave { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0 }
+
+.forn-chave.veio,   .forn-barra.veio   { background: #0F7FA3 }
+.forn-chave.devido, .forn-barra.devido { background: #C47A10 }
+.forn-chave.igreja, .forn-barra.igreja { background: #2D9A5B }
+
+.forn-bloco { padding: .75rem 0; border-bottom: 1px solid var(--border) }
+.forn-bloco:last-of-type { border-bottom: 0 }
+.forn-nome { font-weight: 600; font-size: .92rem; margin-bottom: .45rem }
+
+.forn-linha { display: flex; align-items: center; gap: .7rem; margin-bottom: .3rem }
+.forn-linha:last-child { margin-bottom: 0 }
+
+/* o trilho dá a referência da escala: sem ele, barra curta vira um traço
+   solto e o leitor não sabe de quanto é a comparação */
+.forn-trilho {
+  flex: 1 1 auto; min-width: 0;
+  height: 12px; border-radius: 3px;
+  background: var(--muted);
+  overflow: hidden;
+}
+.forn-barra { height: 100%; border-radius: 3px; transition: width .2s }
+/* prejuízo naquele fornecedor: vendeu abaixo do custo */
+.forn-barra.negativa { background: var(--danger) }
+
+.forn-valor {
+  flex: 0 0 auto; width: 104px; text-align: right;
+  font-size: .8rem; font-variant-numeric: tabular-nums; color: var(--fg);
+}
+.forn-valor.negativo { color: var(--danger) }
+
+.forn-nota {
+  margin: .9rem 0 0; font-size: .75rem; line-height: 1.5; color: var(--muted-fg);
+}
+
+@media (max-width: 520px) {
+  .forn-valor { width: 88px; font-size: .74rem }
+}
