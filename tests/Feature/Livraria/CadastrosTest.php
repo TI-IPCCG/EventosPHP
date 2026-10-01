@@ -17,7 +17,9 @@ use App\Models\User;
 use App\Models\Livraria\PaymentMethod;
 use App\Services\Livraria\PhotoService;
 use App\Services\Livraria\SaleService;
+use App\Models\Livraria\WriteoffReason;
 use App\Services\Livraria\ShipmentService;
+use App\Services\Livraria\WriteoffService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -482,6 +484,129 @@ class CadastrosTest extends TestCase
             ->assertSet('quantidade', 3)
             ->assertSet('custo_unitario', '99.00')
             ->assertSet('preco_venda', '45.00');
+    }
+
+    // ────────── alinhar o custo das saídas já registradas ──────────
+    //
+    // O custo gravado na venda é snapshot DE PROPÓSITO: renegociar o desconto
+    // em novembro não pode reescrever o acerto de um evento fechado em
+    // setembro. Mas o snapshot também congela ERRO DE DIGITAÇÃO — e aconteceu:
+    // um evento inteiro vendido com margens de 1,5%, porque o custo entrou
+    // errado e só foi corrigido depois das primeiras vendas.
+    //
+    // A distinção não é técnica, é de intenção, e só quem edita sabe qual é.
+    // Por isso o alinhamento é PEDIDO, nunca automático.
+
+    private function vendaDe(string $codigo): \App\Models\Livraria\Sale
+    {
+        $forma = PaymentMethod::create(['event_id' => $this->evento->id,
+            'nome' => 'PIX '.uniqid(), 'taxa_percentual' => 0, 'ordem' => 1]);
+
+        $copy = Copy::where('codigo', $codigo)->firstOrFail();
+
+        return app(SaleService::class)->registrar($this->evento->id, [$copy->id], $forma->id);
+    }
+
+    public function test_por_padrao_editar_o_custo_nao_toca_nas_vendas(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $servico->definirItem($this->remessa(), $livro, null, 2, 40.48, 42.00);
+
+        $venda = $this->vendaDe($this->fornecedor->prefixo.'001');
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 35.20, 42.00);
+
+        $this->assertSame('40.48', $venda->items()->first()->custo_unitario,
+            'o custo do dia da venda tem de ficar');
+    }
+
+    /** Pedindo, o custo errado é reescrito — é o conserto de quem digitou errado. */
+    public function test_pedindo_o_alinhamento_a_venda_recebe_o_custo_novo(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $servico->definirItem($this->remessa(), $livro, null, 2, 40.48, 42.00);
+
+        $venda = $this->vendaDe($this->fornecedor->prefixo.'001');
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 35.20, 42.00, alinharSaidas: true);
+
+        $this->assertSame('35.20', $venda->items()->first()->custo_unitario);
+    }
+
+    /** A baixa também: sorteio entra no devido pelo custo, e o custo era o errado. */
+    public function test_o_alinhamento_alcanca_as_baixas(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 2, 40.48, 42.00);
+
+        $motivo = WriteoffReason::create(['church_id' => 1, 'nome' => 'Sorteio '.uniqid(),
+            'gera_custo' => true, 'ativo' => true]);
+
+        $copy = Copy::where('shipment_item_id', $item->id)->first();
+        app(WriteoffService::class)->registrar($this->evento->id, [$copy->id], $motivo->id, 'Pr. Fulano');
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 35.20, 42.00, alinharSaidas: true);
+
+        $this->assertSame('35.20',
+            \App\Models\Livraria\WriteoffItem::where('copy_id', $copy->id)->first()->custo_unitario);
+    }
+
+    /** Venda estornada não é reescrita: ela já não conta para nada. */
+    public function test_o_alinhamento_nao_toca_em_venda_estornada(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $servico->definirItem($this->remessa(), $livro, null, 2, 40.48, 42.00);
+
+        $venda = $this->vendaDe($this->fornecedor->prefixo.'001');
+        app(SaleService::class)->estornar($venda);
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 35.20, 42.00, alinharSaidas: true);
+
+        $this->assertSame('40.48', $venda->items()->first()->custo_unitario);
+    }
+
+    /** A tela precisa saber QUANTAS saídas estão divergentes para avisar. */
+    public function test_conta_as_saidas_com_custo_divergente(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $item    = $servico->definirItem($this->remessa(), $livro, null, 3, 40.48, 42.00);
+
+        $this->assertSame(0, $servico->saidasComCustoDivergente($item->fresh()));
+
+        $this->vendaDe($this->fornecedor->prefixo.'001');
+        $this->vendaDe($this->fornecedor->prefixo.'002');
+
+        $item = $servico->definirItem($this->remessa(), $livro, null, 3, 35.20, 42.00);
+
+        $this->assertSame(2, $servico->saidasComCustoDivergente($item->fresh()));
+
+        $servico->definirItem($this->remessa(), $livro, null, 3, 35.20, 42.00, alinharSaidas: true);
+
+        $this->assertSame(0, $servico->saidasComCustoDivergente($item->fresh()));
+    }
+
+    /** E o devido do fornecedor muda junto — que é o ponto de tudo isto. */
+    public function test_alinhar_corrige_o_devido_do_fornecedor(): void
+    {
+        $servico = app(ShipmentService::class);
+        $livro   = $this->livro('Livro A');
+        $servico->definirItem($this->remessa(), $livro, null, 2, 40.48, 42.00);
+
+        $this->vendaDe($this->fornecedor->prefixo.'001');
+
+        $devido = fn () => collect(\App\Services\Livraria\EventResult::para($this->evento)
+            ->porFornecedor())->firstWhere('fornecedor', $this->fornecedor->nome)['devido'];
+
+        $this->assertSame(40.48, $devido());
+
+        $servico->definirItem($this->remessa(), $livro, null, 2, 35.20, 42.00, alinharSaidas: true);
+
+        $this->assertSame(35.20, $devido());
     }
 
     // ─────────────── etiquetas (opcional) ───────────────

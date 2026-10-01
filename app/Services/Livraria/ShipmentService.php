@@ -32,6 +32,7 @@ class ShipmentService
         int $quantidade,
         float $custoUnitario,
         float $precoVenda,
+        bool $alinharSaidas = false,
     ): ShipmentItem {
         if ($quantidade < 1) {
             throw new RuntimeException('A quantidade precisa ser pelo menos 1.');
@@ -47,7 +48,7 @@ class ShipmentService
             throw new RuntimeException("Escolha {$produto->category->rotuloVariacao()} para este item.");
         }
 
-        return DB::transaction(function () use ($remessa, $produto, $variacao, $quantidade, $custoUnitario, $precoVenda) {
+        return DB::transaction(function () use ($remessa, $produto, $variacao, $quantidade, $custoUnitario, $precoVenda, $alinharSaidas) {
             $item = ShipmentItem::updateOrCreate(
                 [
                     'shipment_id' => $remessa->id,
@@ -63,8 +64,76 @@ class ShipmentService
 
             $this->sincronizarExemplares($item, $quantidade);
 
+            if ($alinharSaidas) {
+                $this->alinharSaidasAoCusto($item);
+            }
+
             return $item->refresh();
         });
+    }
+
+    /**
+     * Reescreve o custo das saídas já registradas com o custo atual da linha.
+     *
+     * ── POR QUE ISTO PRECISA SER PEDIDO, E NUNCA AUTOMÁTICO ───────────
+     * O custo gravado na venda é SNAPSHOT de propósito: renegociar o desconto
+     * com a editora em novembro não pode reescrever o acerto de um evento
+     * fechado em setembro. Alinhar por padrão destruiria exatamente a
+     * propriedade que torna o acerto confiável meses depois.
+     *
+     * Mas o snapshot também congela ERRO DE DIGITAÇÃO. Quando o custo foi
+     * lançado errado e só se percebe depois das primeiras vendas, o valor
+     * velho fica preso nelas — e o acerto sai inflado, sem que número nenhum
+     * na tela denuncie. Aconteceu: margens de 1,5% num evento inteiro.
+     *
+     * Então a distinção não é técnica, é de intenção, e só quem está editando
+     * sabe qual é: "eu errei o número" alinha, "o preço mudou" não.
+     *
+     * @return int  quantas saídas foram alinhadas
+     */
+    public function alinharSaidasAoCusto(ShipmentItem $item): int
+    {
+        $copias = $item->copies()->select('id');
+
+        $vendas = DB::table('liv_sale_items as it')
+            ->join('liv_sales as s', 's.id', '=', 'it.sale_id')
+            ->whereIn('it.copy_id', $copias)
+            ->whereNull('s.cancelada_em')
+            ->whereNull('it.cancelado_em')
+            ->update(['it.custo_unitario' => $item->custo_unitario]);
+
+        $baixas = DB::table('liv_writeoff_items as wi')
+            ->join('liv_writeoffs as w', 'w.id', '=', 'wi.writeoff_id')
+            ->whereIn('wi.copy_id', $copias)
+            ->whereNull('w.cancelada_em')
+            ->whereNull('wi.cancelado_em')
+            ->update(['wi.custo_unitario' => $item->custo_unitario]);
+
+        return $vendas + $baixas;
+    }
+
+    /** Quantas saídas desta linha estão com custo diferente do atual. */
+    public function saidasComCustoDivergente(ShipmentItem $item): int
+    {
+        $copias = $item->copies()->select('id');
+
+        $vendas = DB::table('liv_sale_items as it')
+            ->join('liv_sales as s', 's.id', '=', 'it.sale_id')
+            ->whereIn('it.copy_id', $copias)
+            ->whereNull('s.cancelada_em')
+            ->whereNull('it.cancelado_em')
+            ->where('it.custo_unitario', '<>', $item->custo_unitario)
+            ->count();
+
+        $baixas = DB::table('liv_writeoff_items as wi')
+            ->join('liv_writeoffs as w', 'w.id', '=', 'wi.writeoff_id')
+            ->whereIn('wi.copy_id', $copias)
+            ->whereNull('w.cancelada_em')
+            ->whereNull('wi.cancelado_em')
+            ->where('wi.custo_unitario', '<>', $item->custo_unitario)
+            ->count();
+
+        return $vendas + $baixas;
     }
 
     /**

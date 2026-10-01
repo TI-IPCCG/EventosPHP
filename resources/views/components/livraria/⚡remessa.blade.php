@@ -43,6 +43,15 @@ class extends Component {
      */
     public ?int $editandoLinha = null;
 
+    /**
+     * Pedido explícito de reescrever o custo das saídas já registradas.
+     *
+     * FALSE por padrão, e tem de continuar assim: o snapshot existe para que
+     * renegociar amanhã não mexa no acerto de ontem. Isto é a exceção — "o
+     * número que digitei estava errado" —, e só quem edita sabe qual é o caso.
+     */
+    public bool $alinharSaidas = false;
+
     // linha em edição
     public ?int $product_id = null;
     public ?int $variant_id = null;
@@ -239,6 +248,7 @@ class extends Component {
 
         $item = ShipmentItem::where('shipment_id', $this->remessa?->id)->findOrFail($id);
 
+        $this->alinharSaidas  = false;
         $this->editandoLinha  = $item->id;
         $this->product_id     = $item->product_id;
         $this->variant_id     = $item->variant_id;
@@ -250,8 +260,22 @@ class extends Component {
         unset($this->exemplaresQueSeraoRemovidos);
     }
 
+    /** Saídas desta linha com custo diferente do que está na remessa agora. */
+    #[Computed]
+    public function saidasDivergentes(): int
+    {
+        if (! $this->editandoLinha) {
+            return 0;
+        }
+
+        $item = ShipmentItem::find($this->editandoLinha);
+
+        return $item ? app(ShipmentService::class)->saidasComCustoDivergente($item) : 0;
+    }
+
     public function cancelarEdicao(): void
     {
+        $this->alinharSaidas = false;
         $this->editandoLinha = null;
         $this->reset(['product_id', 'variant_id', 'quantidade', 'custo_unitario', 'preco_venda']);
         $this->resetErrorBag();
@@ -281,6 +305,7 @@ class extends Component {
                 quantidade: $this->quantidade,
                 custoUnitario: (float) $this->custo_unitario,
                 precoVenda: (float) $this->preco_venda,
+                alinharSaidas: $this->editandoLinha && $this->alinharSaidas,
             );
         } catch (QueryException $e) {
             // ⚠ Antes do catch específico, esta sobra caía no RuntimeException
@@ -300,7 +325,12 @@ class extends Component {
             return;
         }
 
+        $alinhou = $this->editandoLinha && $this->alinharSaidas;
+
         $this->editandoLinha = null;
+        $this->alinharSaidas = false;
+        unset($this->saidasDivergentes);
+
         $exemplares = $item->copies()->count();
         $rotulo     = $item->rotulo();
 
@@ -308,7 +338,8 @@ class extends Component {
         unset($this->linhas, $this->totais, $this->exemplaresQueSeraoRemovidos);
 
         $this->dispatch('toast', tipo: 'ok', titulo: 'Remessa atualizada',
-            mensagem: "{$rotulo}: {$exemplares} ".str('exemplar')->plural($exemplares).' no evento.');
+            mensagem: "{$rotulo}: {$exemplares} ".str('exemplar')->plural($exemplares).' no evento.'
+                .($alinhou ? ' O custo das saídas já registradas foi alinhado.' : ''));
     }
 
     public function removerLinha(int $id, ShipmentService $remessas): void
@@ -515,6 +546,31 @@ class extends Component {
                             </small>
                             @error('custo_unitario') <span class="field-error">{{ $message }}</span> @enderror
                         </div>
+                        {{-- ⚠ Só aparece quando há divergência, e desmarcado.
+                             O snapshot é a razão de o acerto ser confiável meses
+                             depois; reescrevê-lo tem de ser um ato deliberado,
+                             com o número das saídas afetadas à vista. --}}
+                        @if ($editandoLinha && $this->saidasDivergentes > 0)
+                            <div class="alert warn" role="note" style="grid-column:1/-1">
+                                <div>
+                                    <strong>{{ $this->saidasDivergentes }}</strong>
+                                    {{ $this->saidasDivergentes == 1 ? 'saída já registrada tem' : 'saídas já registradas têm' }}
+                                    custo diferente do que está aqui.
+                                    <label class="checkbox" style="margin-top:.5rem">
+                                        <input type="checkbox" wire:model="alinharSaidas">
+                                        Aplicar o custo novo também
+                                        {{ $this->saidasDivergentes == 1 ? 'a ela' : 'a elas' }}
+                                    </label>
+                                    <small class="ajuda">
+                                        Marque quando estiver <strong>corrigindo um valor digitado
+                                        errado</strong>. Deixe desmarcado se o custo mudou de verdade
+                                        (renegociação): o que já foi vendido guarda o custo do dia, e
+                                        é isso que faz o acerto continuar fiel meses depois.
+                                    </small>
+                                </div>
+                            </div>
+                        @endif
+
                         <div>
                             <label for="r-preco">Preço de venda</label>
                             <input id="r-preco" type="number" step="0.01" min="0" wire:model="preco_venda" required>
